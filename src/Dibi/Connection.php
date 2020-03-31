@@ -37,6 +37,11 @@ class Connection implements IConnection
 	/** @var HashMap Substitutes for identifiers */
 	private $substitutes;
 
+	/** @var bool */
+	private $isTransactional = false;
+
+	/** @var bool */
+	private $transactionStarted = false;
 
 	/**
 	 * Connection options: (see driver-specific options too)
@@ -98,6 +103,25 @@ class Connection implements IConnection
 		if (empty($config['lazy'])) {
 			$this->connect();
 		}
+	}
+
+
+	public function resetTransactionStatus(): void
+	{
+		$this->isTransactional = false;
+		$this->transactionStarted = false;
+	}
+
+
+	public function setTransactional(bool $isTransactional): void
+	{
+		$this->isTransactional = $isTransactional;
+	}
+
+
+	public function getTransactionStarted(): bool
+	{
+		return $this->transactionStarted;
 	}
 
 
@@ -206,7 +230,15 @@ class Connection implements IConnection
 	 */
 	final public function query(...$args): Result
 	{
-		return $this->nativeQuery($this->translateArgs($args));
+		$query = $this->translateArgs($args);
+
+		if ($this->isTransactional === true && $this->transactionStarted === false) {
+			$this->transactionStarted = true;
+
+			return $this->nativeQuery('START TRANSACTION');
+		}
+
+		return $this->nativeQuery($query);
 	}
 
 
