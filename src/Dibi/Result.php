@@ -32,7 +32,7 @@ class Result implements IDataSource
 	private $fetched = false;
 
 	/** @var string|null  returned object class */
-	private $rowClass = Row::class;
+	private $rowClass = null;
 
 	/** @var callable|null  returned object factory */
 	private $rowFactory;
@@ -158,7 +158,7 @@ class Result implements IDataSource
 	/**
 	 * Fetches the row at current position, process optional type conversion.
 	 * and moves the internal cursor to the next position
-	 * @return Row|array|null
+	 * @return array|null
 	 */
 	final public function fetch()
 	{
@@ -195,7 +195,7 @@ class Result implements IDataSource
 
 	/**
 	 * Fetches all records from table.
-	 * @return Row[]|array[]
+	 * @return array|null
 	 */
 	final public function fetchAll(int $offset = null, int $limit = null): array
 	{
@@ -282,7 +282,7 @@ class Result implements IDataSource
 					}
 
 				} elseif ($as !== '|') { // associative-array node
-					$x = &$x[$row->$as];
+					$x = &$x[$row[$as]];
 				}
 			}
 
@@ -400,7 +400,7 @@ class Result implements IDataSource
 			$value = $tmp[1];
 
 		} else {
-			if (!property_exists($row, $value)) {
+			if (!array_key_exists($row, $value)) {
 				throw new \InvalidArgumentException("Unknown value column '$value'.");
 			}
 
@@ -411,7 +411,7 @@ class Result implements IDataSource
 				return $data;
 			}
 
-			if (!property_exists($row, $key)) {
+			if (!array_key_exists($row, $key)) {
 				throw new \InvalidArgumentException("Unknown key column '$key'.");
 			}
 		}
