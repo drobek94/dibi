@@ -400,7 +400,7 @@ class Result implements IDataSource
 			$value = $tmp[1];
 
 		} else {
-			if (!array_key_exists($row, $value)) {
+			if (!array_key_exists($value, $row)) {
 				throw new \InvalidArgumentException("Unknown value column '$value'.");
 			}
 
@@ -411,7 +411,7 @@ class Result implements IDataSource
 				return $data;
 			}
 
-			if (!array_key_exists($row, $key)) {
+			if (!array_key_exists($key, $row)) {
 				throw new \InvalidArgumentException("Unknown key column '$key'.");
 			}
 		}
