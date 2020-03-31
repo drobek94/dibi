@@ -63,8 +63,6 @@ class MySqliDriver implements Dibi\Driver
 		} else {
 			// default values
 			$config += [
-				'charset' => 'utf8',
-				'timezone' => date('P'),
 				'username' => ini_get('mysqli.default_user'),
 				'password' => ini_get('mysqli.default_pw'),
 				'socket' => (string) ini_get('mysqli.default_socket'),
