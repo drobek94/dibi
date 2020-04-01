@@ -195,7 +195,7 @@ class Result implements IDataSource
 
 	/**
 	 * Fetches all records from table.
-	 * @return array|null
+	 * @return array[]
 	 */
 	final public function fetchAll(int $offset = null, int $limit = null): array
 	{
@@ -246,7 +246,7 @@ class Result implements IDataSource
 		// check columns
 		foreach ($assoc as $as) {
 			// offsetExists ignores null in PHP 5.2.1, isset() surprisingly null accepts
-			if ($as !== '[]' && $as !== '=' && $as !== '->' && $as !== '|' && !property_exists($row, $as)) {
+			if ($as !== '[]' && $as !== '=' && $as !== '->' && $as !== '|' && !array_key_exists($as, $row)) {
 				throw new \InvalidArgumentException("Unknown column '$as' in associative descriptor.");
 			}
 		}

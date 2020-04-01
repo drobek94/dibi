@@ -234,8 +234,7 @@ class Connection implements IConnection
 
 		if ($this->isTransactional === true && $this->transactionStarted === false) {
 			$this->transactionStarted = true;
-
-			return $this->nativeQuery('START TRANSACTION');
+			$this->nativeQuery('START TRANSACTION');
 		}
 
 		return $this->nativeQuery($query);
