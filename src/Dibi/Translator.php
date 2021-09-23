@@ -382,6 +382,9 @@ final class Translator
 					if ($value === null) {
 						return 'NULL';
 					} else {
+						if (is_string($value)) {
+							$value = (new DateTimeImmutable())->setTimestamp(\Safe\strtotime($value));
+						}
 						return $modifier === 'd' ? $this->driver->escapeDate($value) : $this->driver->escapeDateTime($value);
 					}
 					// break omitted
