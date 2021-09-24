@@ -383,7 +383,7 @@ final class Translator
 						return 'NULL';
 					} else {
 						if (is_string($value)) {
-							$value = (new DateTimeImmutable())->setTimestamp(\Safe\strtotime($value));
+							$value = (new \DateTimeImmutable())->setTimestamp(\strtotime($value));
 						}
 						return $modifier === 'd' ? $this->driver->escapeDate($value) : $this->driver->escapeDateTime($value);
 					}
