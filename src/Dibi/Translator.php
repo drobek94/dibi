@@ -397,8 +397,13 @@ XX
 				case 'dt': // datetime
 					if ($value === null) {
 						return 'NULL';
-					} elseif (!$value instanceof \DateTimeInterface) {
-						$value = new DateTime($value);
+					} else {
+						if (is_string($value)) {
+							$value = (new \DateTimeImmutable())->setTimestamp(\strtotime($value));
+						} elseif (!$value instanceof \DateTimeInterface) {
+							$value = new DateTime($value);
+						}
+						return $modifier === 'd' ? $this->driver->escapeDate($value) : $this->driver->escapeDateTime($value);
 					}
 					return $modifier === 'd'
 						? $this->driver->escapeDate($value)
