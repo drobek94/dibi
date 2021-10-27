@@ -42,9 +42,7 @@ class OracleDriver implements Dibi\Driver
 	private $affectedRows;
 
 
-	/**
-	 * @throws Dibi\NotSupportedException
-	 */
+	/** @throws Dibi\NotSupportedException */
 	public function __construct(array $config)
 	{
 		if (!extension_loaded('oci8')) {
@@ -52,10 +50,6 @@ class OracleDriver implements Dibi\Driver
 		}
 
 		$foo = &$config['charset'];
-
-		if (isset($config['formatDate']) || isset($config['formatDateTime'])) {
-			trigger_error('OracleDriver: options formatDate and formatDateTime are deprecated.', E_USER_DEPRECATED);
-		}
 		$this->nativeDate = $config['nativeDate'] ?? true;
 
 		if (isset($config['resource'])) {
@@ -102,7 +96,9 @@ class OracleDriver implements Dibi\Driver
 
 			} elseif (is_resource($res)) {
 				$this->affectedRows = Dibi\Helpers::false2Null(oci_num_rows($res));
-				return oci_num_fields($res) ? $this->createResultDriver($res) : null;
+				return oci_num_fields($res)
+					? $this->createResultDriver($res)
+					: null;
 			}
 		} else {
 			$err = oci_error($this->connection);
@@ -245,31 +241,25 @@ class OracleDriver implements Dibi\Driver
 	}
 
 
-	/**
-	 * @param  \DateTimeInterface|string|int  $value
-	 */
-	public function escapeDate($value): string
+	public function escapeDate(\DateTimeInterface $value): string
 	{
-		if (!$value instanceof \DateTimeInterface) {
-			$value = new Dibi\DateTime($value);
-		}
 		return $this->nativeDate
 			? "to_date('" . $value->format('Y-m-d') . "', 'YYYY-mm-dd')"
 			: $value->format('U');
 	}
 
 
-	/**
-	 * @param  \DateTimeInterface|string|int  $value
-	 */
-	public function escapeDateTime($value): string
+	public function escapeDateTime(\DateTimeInterface $value): string
 	{
-		if (!$value instanceof \DateTimeInterface) {
-			$value = new Dibi\DateTime($value);
-		}
 		return $this->nativeDate
 			? "to_date('" . $value->format('Y-m-d G:i:s') . "', 'YYYY-mm-dd hh24:mi:ss')"
 			: $value->format('U');
+	}
+
+
+	public function escapeDateInterval(\DateInterval $value): string
+	{
+		throw new Dibi\NotImplementedException;
 	}
 
 
@@ -280,7 +270,7 @@ class OracleDriver implements Dibi\Driver
 	{
 		$value = addcslashes(str_replace('\\', '\\\\', $value), "\x00\\%_");
 		$value = str_replace("'", "''", $value);
-		return ($pos <= 0 ? "'%" : "'") . $value . ($pos >= 0 ? "%'" : "'");
+		return ($pos & 1 ? "'%" : "'") . $value . ($pos & 2 ? "%'" : "'");
 	}
 
 

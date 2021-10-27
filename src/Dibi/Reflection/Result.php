@@ -28,7 +28,7 @@ class Result
 	/** @var Column[]|null */
 	private $columns;
 
-	/** @var string[]|null */
+	/** @var Column[]|null */
 	private $names;
 
 
@@ -38,9 +38,7 @@ class Result
 	}
 
 
-	/**
-	 * @return Column[]
-	 */
+	/** @return Column[] */
 	public function getColumns(): array
 	{
 		$this->initColumns();
@@ -48,9 +46,7 @@ class Result
 	}
 
 
-	/**
-	 * @return string[]
-	 */
+	/** @return string[] */
 	public function getColumnNames(bool $fullNames = false): array
 	{
 		$this->initColumns();
@@ -86,7 +82,9 @@ class Result
 	{
 		if ($this->columns === null) {
 			$this->columns = [];
-			$reflector = $this->driver instanceof Dibi\Reflector ? $this->driver : null;
+			$reflector = $this->driver instanceof Dibi\Reflector
+				? $this->driver
+				: null;
 			foreach ($this->driver->getResultColumns() as $info) {
 				$this->columns[] = $this->names[strtolower($info['name'])] = new Column($reflector, $info);
 			}

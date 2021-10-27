@@ -72,7 +72,9 @@ class Column
 
 	public function getTableName(): ?string
 	{
-		return isset($this->info['table']) && $this->info['table'] != null ? $this->info['table'] : null; // intentionally ==
+		return isset($this->info['table']) && $this->info['table'] != null // intentionally ==
+			? $this->info['table']
+			: null;
 	}
 
 
@@ -106,18 +108,14 @@ class Column
 	}
 
 
-	/**
-	 * @return mixed
-	 */
+	/** @return mixed */
 	public function getDefault()
 	{
 		return $this->info['default'] ?? null;
 	}
 
 
-	/**
-	 * @return mixed
-	 */
+	/** @return mixed */
 	public function getVendorInfo(string $key)
 	{
 		return $this->info['vendor'][$key] ?? null;

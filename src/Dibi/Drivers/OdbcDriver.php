@@ -37,9 +37,7 @@ class OdbcDriver implements Dibi\Driver
 	private $microseconds = true;
 
 
-	/**
-	 * @throws Dibi\NotSupportedException
-	 */
+	/** @throws Dibi\NotSupportedException */
 	public function __construct(array $config)
 	{
 		if (!extension_loaded('odbc')) {
@@ -56,11 +54,9 @@ class OdbcDriver implements Dibi\Driver
 				'dsn' => ini_get('odbc.default_db'),
 			];
 
-			if (empty($config['persistent'])) {
-				$this->connection = @odbc_connect($config['dsn'], $config['username'] ?? '', $config['password'] ?? ''); // intentionally @
-			} else {
-				$this->connection = @odbc_pconnect($config['dsn'], $config['username'] ?? '', $config['password'] ?? ''); // intentionally @
-			}
+			$this->connection = empty($config['persistent'])
+				? @odbc_connect($config['dsn'], $config['username'] ?? '', $config['password'] ?? '') // intentionally @
+				: @odbc_pconnect($config['dsn'], $config['username'] ?? '', $config['password'] ?? ''); // intentionally @
 		}
 
 		if (!is_resource($this->connection)) {
@@ -96,7 +92,9 @@ class OdbcDriver implements Dibi\Driver
 
 		} elseif (is_resource($res)) {
 			$this->affectedRows = Dibi\Helpers::false2Null(odbc_num_rows($res));
-			return odbc_num_fields($res) ? $this->createResultDriver($res) : null;
+			return odbc_num_fields($res)
+				? $this->createResultDriver($res)
+				: null;
 		}
 		return null;
 	}
@@ -126,7 +124,7 @@ class OdbcDriver implements Dibi\Driver
 	 */
 	public function begin(string $savepoint = null): void
 	{
-		if (!odbc_autocommit($this->connection, 0/*false*/)) {
+		if (!odbc_autocommit($this->connection, PHP_VERSION_ID < 80000 ? 0 : false)) {
 			throw new Dibi\DriverException(odbc_errormsg($this->connection) . ' ' . odbc_error($this->connection));
 		}
 	}
@@ -141,7 +139,7 @@ class OdbcDriver implements Dibi\Driver
 		if (!odbc_commit($this->connection)) {
 			throw new Dibi\DriverException(odbc_errormsg($this->connection) . ' ' . odbc_error($this->connection));
 		}
-		odbc_autocommit($this->connection, 1/*true*/);
+		odbc_autocommit($this->connection, PHP_VERSION_ID < 80000 ? 1 : true);
 	}
 
 
@@ -154,7 +152,7 @@ class OdbcDriver implements Dibi\Driver
 		if (!odbc_rollback($this->connection)) {
 			throw new Dibi\DriverException(odbc_errormsg($this->connection) . ' ' . odbc_error($this->connection));
 		}
-		odbc_autocommit($this->connection, 1/*true*/);
+		odbc_autocommit($this->connection, PHP_VERSION_ID < 80000 ? 1 : true);
 	}
 
 
@@ -226,27 +224,21 @@ class OdbcDriver implements Dibi\Driver
 	}
 
 
-	/**
-	 * @param  \DateTimeInterface|string|int  $value
-	 */
-	public function escapeDate($value): string
+	public function escapeDate(\DateTimeInterface $value): string
 	{
-		if (!$value instanceof \DateTimeInterface) {
-			$value = new Dibi\DateTime($value);
-		}
 		return $value->format('#m/d/Y#');
 	}
 
 
-	/**
-	 * @param  \DateTimeInterface|string|int  $value
-	 */
-	public function escapeDateTime($value): string
+	public function escapeDateTime(\DateTimeInterface $value): string
 	{
-		if (!$value instanceof \DateTimeInterface) {
-			$value = new Dibi\DateTime($value);
-		}
 		return $value->format($this->microseconds ? '#m/d/Y H:i:s.u#' : '#m/d/Y H:i:s#');
+	}
+
+
+	public function escapeDateInterval(\DateInterval $value): string
+	{
+		throw new Dibi\NotImplementedException;
 	}
 
 
@@ -256,7 +248,7 @@ class OdbcDriver implements Dibi\Driver
 	public function escapeLike(string $value, int $pos): string
 	{
 		$value = strtr($value, ["'" => "''", '%' => '[%]', '_' => '[_]', '[' => '[[]']);
-		return ($pos <= 0 ? "'%" : "'") . $value . ($pos >= 0 ? "%'" : "'");
+		return ($pos & 1 ? "'%" : "'") . $value . ($pos & 2 ? "%'" : "'");
 	}
 
 

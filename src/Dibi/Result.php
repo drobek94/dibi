@@ -19,7 +19,7 @@ class Result implements IDataSource
 {
 	use Strict;
 
-	/** @var ResultDriver */
+	/** @var ResultDriver|null */
 	private $driver;
 
 	/** @var array  Translate table */
@@ -83,7 +83,9 @@ class Result implements IDataSource
 	 */
 	final public function seek(int $row): bool
 	{
-		return ($row !== 0 || $this->fetched) ? $this->getResultDriver()->seek($row) : true;
+		return ($row !== 0 || $this->fetched)
+			? $this->getResultDriver()->seek($row)
+			: true;
 	}
 
 
@@ -199,7 +201,7 @@ class Result implements IDataSource
 	 */
 	final public function fetchAll(int $offset = null, int $limit = null): array
 	{
-		$limit = $limit === null ? -1 : $limit;
+		$limit = $limit ?? -1;
 		$this->seek($offset ?: 0);
 		$row = $this->fetch();
 		if (!$row) {
@@ -242,6 +244,9 @@ class Result implements IDataSource
 
 		$data = null;
 		$assoc = preg_split('#(\[\]|->|=|\|)#', $assoc, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+		if (!$assoc) {
+			throw new \InvalidArgumentException("Invalid descriptor '$assoc'.");
+		}
 
 		// check columns
 		foreach ($assoc as $as) {
@@ -282,7 +287,7 @@ class Result implements IDataSource
 					}
 
 				} elseif ($as !== '|') { // associative-array node
-					$x = &$x[$row[$as]];
+					$x = &$x[(string) $row->$as];
 				}
 			}
 
@@ -292,13 +297,12 @@ class Result implements IDataSource
 		} while ($row = $this->fetch());
 
 		unset($x);
+		/** @var mixed[] $data */
 		return $data;
 	}
 
 
-	/**
-	 * @deprecated
-	 */
+	/** @deprecated */
 	private function oldFetchAssoc(string $assoc)
 	{
 		$this->seek(0);
@@ -350,16 +354,14 @@ class Result implements IDataSource
 					}
 
 				} else { // associative-array node
-					$x = &$x[$row->$as];
+					$x = &$x[(string) $row->$as];
 				}
 			}
 
 			if ($x === null) { // build leaf
-				if ($leaf === '=') {
-					$x = $row->toArray();
-				} else {
-					$x = $row;
-				}
+				$x = $leaf === '='
+					? $row->toArray()
+					: $row;
 			}
 		} while ($row = $this->fetch());
 
@@ -452,6 +454,7 @@ class Result implements IDataSource
 				continue;
 			}
 			$value = $row[$key];
+
 			if ($type === Type::TEXT) {
 				$row[$key] = (string) $value;
 
@@ -463,8 +466,11 @@ class Result implements IDataSource
 			} elseif ($type === Type::FLOAT) {
 				$value = ltrim((string) $value, '0');
 				$p = strpos($value, '.');
-				if ($p !== false) {
+				$e = strpos($value, 'e');
+				if ($p !== false && $e === false) {
 					$value = rtrim(rtrim($value, '0'), '.');
+				} elseif ($p !== false && $e !== false) {
+					$value = rtrim($value, '.');
 				}
 				if ($value === '' || $value[0] === '.') {
 					$value = '0' . $value;
@@ -479,7 +485,9 @@ class Result implements IDataSource
 			} elseif ($type === Type::DATETIME || $type === Type::DATE || $type === Type::TIME) {
 				if ($value && substr((string) $value, 0, 3) !== '000') { // '', null, false, '0000-00-00', ...
 					$value = new DateTime($value);
-					$row[$key] = empty($this->formats[$type]) ? $value : $value->format($this->formats[$type]);
+					$row[$key] = empty($this->formats[$type])
+						? $value
+						: $value->format($this->formats[$type]);
 				} else {
 					$row[$key] = null;
 				}
@@ -490,10 +498,22 @@ class Result implements IDataSource
 				$row[$key]->invert = (int) (bool) $m[1];
 
 			} elseif ($type === Type::BINARY) {
-				$row[$key] = is_string($value) ? $this->getResultDriver()->unescapeBinary($value) : $value;
+				$row[$key] = is_string($value)
+					? $this->getResultDriver()->unescapeBinary($value)
+					: $value;
 
 			} elseif ($type === Type::JSON) {
-				$row[$key] = json_decode($value, true);
+				if ($this->formats[$type] === 'string') {
+					$row[$key] = $value;
+				} else {
+					$row[$key] = json_decode($value, $this->formats[$type] === 'array');
+				}
+
+			} elseif ($type === null) {
+				$row[$key] = $value;
+
+			} else {
+				throw new \RuntimeException('Unexpected type ' . $type);
 			}
 		}
 	}
@@ -516,6 +536,15 @@ class Result implements IDataSource
 	final public function getType(string $column): ?string
 	{
 		return $this->types[$column] ?? null;
+	}
+
+
+	/**
+	 * Returns columns type.
+	 */
+	final public function getTypes(): array
+	{
+		return $this->types;
 	}
 
 
@@ -553,9 +582,7 @@ class Result implements IDataSource
 	}
 
 
-	/**
-	 * @return Reflection\Column[]
-	 */
+	/** @return Reflection\Column[] */
 	final public function getColumns(): array
 	{
 		return $this->getInfo()->getColumns();

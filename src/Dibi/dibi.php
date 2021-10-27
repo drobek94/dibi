@@ -11,28 +11,28 @@ declare(strict_types=1);
 /**
  * Static container class for Dibi connections.
  *
- * @method void disconnect()
- * @method Dibi\Result query(...$args)
- * @method Dibi\Result nativeQuery(...$args)
- * @method bool test(...$args)
- * @method Dibi\DataSource dataSource(...$args)
- * @method Dibi\Row|null fetch(...$args)
- * @method array fetchAll(...$args)
- * @method mixed fetchSingle(...$args)
- * @method array fetchPairs(...$args)
- * @method int getAffectedRows()
- * @method int getInsertId(string $sequence = null)
- * @method void begin(string $savepoint = null)
- * @method void commit(string $savepoint = null)
- * @method void rollback(string $savepoint = null)
- * @method Dibi\Reflection\Database getDatabaseInfo()
- * @method Dibi\Fluent command()
- * @method Dibi\Fluent select(...$args)
- * @method Dibi\Fluent update(string|string[] $table, array $args)
- * @method Dibi\Fluent insert(string $table, array $args)
- * @method Dibi\Fluent delete(string $table)
- * @method Dibi\HashMap getSubstitutes()
- * @method int loadFile(string $file)
+ * @method static void disconnect()
+ * @method static Dibi\Result query(...$args)
+ * @method static Dibi\Result nativeQuery(...$args)
+ * @method static bool test(...$args)
+ * @method static Dibi\DataSource dataSource(...$args)
+ * @method static Dibi\Row|null fetch(...$args)
+ * @method static array fetchAll(...$args)
+ * @method static mixed fetchSingle(...$args)
+ * @method static array fetchPairs(...$args)
+ * @method static int getAffectedRows()
+ * @method static int getInsertId(string $sequence = null)
+ * @method static void begin(string $savepoint = null)
+ * @method static void commit(string $savepoint = null)
+ * @method static void rollback(string $savepoint = null)
+ * @method static Dibi\Reflection\Database getDatabaseInfo()
+ * @method static Dibi\Fluent command()
+ * @method static Dibi\Fluent select(...$args)
+ * @method static Dibi\Fluent update(string|string[] $table, array $args)
+ * @method static Dibi\Fluent insert(string $table, array $args)
+ * @method static Dibi\Fluent delete(string $table)
+ * @method static Dibi\HashMap getSubstitutes()
+ * @method static int loadFile(string $file)
  */
 class dibi
 {
@@ -44,7 +44,7 @@ class dibi
 
 	/** version */
 	public const
-		VERSION = '4.0.1';
+		VERSION = '4.1.3';
 
 	/** sorting order */
 	public const
@@ -75,7 +75,7 @@ class dibi
 	 */
 	final public function __construct()
 	{
-		throw new LogicException('Cannot instantiate static class ' . get_class($this));
+		throw new LogicException('Cannot instantiate static class ' . static::class);
 	}
 
 
@@ -142,26 +142,6 @@ class dibi
 	public static function __callStatic(string $name, array $args)
 	{
 		return self::getConnection()->$name(...$args);
-	}
-
-
-	/**
-	 * @deprecated
-	 */
-	public static function affectedRows(): int
-	{
-		trigger_error(__METHOD__ . '() is deprecated, use getAffectedRows()', E_USER_DEPRECATED);
-		return self::getConnection()->getAffectedRows();
-	}
-
-
-	/**
-	 * @deprecated
-	 */
-	public static function insertId(string $sequence = null): int
-	{
-		trigger_error(__METHOD__ . '() is deprecated, use getInsertId()', E_USER_DEPRECATED);
-		return self::getConnection()->getInsertId($sequence);
 	}
 
 

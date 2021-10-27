@@ -23,6 +23,7 @@ use Dibi\Helpers;
  *   - charset => character encoding to set (default is utf8)
  *   - persistent (bool) => try to find a persistent link?
  *   - resource (resource) => existing connection resource
+ *   - connect_type (int) => see pg_connect()
  */
 class PostgreDriver implements Dibi\Driver
 {
@@ -35,9 +36,7 @@ class PostgreDriver implements Dibi\Driver
 	private $affectedRows;
 
 
-	/**
-	 * @throws Dibi\NotSupportedException
-	 */
+	/** @throws Dibi\NotSupportedException */
 	public function __construct(array $config)
 	{
 		if (!extension_loaded('pgsql')) {
@@ -64,15 +63,14 @@ class PostgreDriver implements Dibi\Driver
 					}
 				}
 			}
+			$connectType = $config['connect_type'] ?? PGSQL_CONNECT_FORCE_NEW;
 
 			set_error_handler(function (int $severity, string $message) use (&$error) {
 				$error = $message;
 			});
-			if (empty($config['persistent'])) {
-				$this->connection = pg_connect($string, PGSQL_CONNECT_FORCE_NEW);
-			} else {
-				$this->connection = pg_pconnect($string, PGSQL_CONNECT_FORCE_NEW);
-			}
+			$this->connection = empty($config['persistent'])
+				? pg_connect($string, $connectType)
+				: pg_pconnect($string, $connectType);
 			restore_error_handler();
 		}
 
@@ -171,12 +169,9 @@ class PostgreDriver implements Dibi\Driver
 	 */
 	public function getInsertId(?string $sequence): ?int
 	{
-		if ($sequence === null) {
-			// PostgreSQL 8.1 is needed
-			$res = $this->query('SELECT LASTVAL()');
-		} else {
-			$res = $this->query("SELECT CURRVAL('$sequence')");
-		}
+		$res = $sequence === null
+			? $this->query('SELECT LASTVAL()') // PostgreSQL 8.1 is needed
+			: $this->query("SELECT CURRVAL('$sequence')");
 
 		if (!$res) {
 			return null;
@@ -292,27 +287,21 @@ class PostgreDriver implements Dibi\Driver
 	}
 
 
-	/**
-	 * @param  \DateTimeInterface|string|int  $value
-	 */
-	public function escapeDate($value): string
+	public function escapeDate(\DateTimeInterface $value): string
 	{
-		if (!$value instanceof \DateTimeInterface) {
-			$value = new Dibi\DateTime($value);
-		}
 		return $value->format("'Y-m-d'");
 	}
 
 
-	/**
-	 * @param  \DateTimeInterface|string|int  $value
-	 */
-	public function escapeDateTime($value): string
+	public function escapeDateTime(\DateTimeInterface $value): string
 	{
-		if (!$value instanceof \DateTimeInterface) {
-			$value = new Dibi\DateTime($value);
-		}
 		return $value->format("'Y-m-d H:i:s.u'");
+	}
+
+
+	public function escapeDateInterval(\DateInterval $value): string
+	{
+		throw new Dibi\NotImplementedException;
 	}
 
 
@@ -324,7 +313,7 @@ class PostgreDriver implements Dibi\Driver
 		$bs = pg_escape_string($this->connection, '\\'); // standard_conforming_strings = on/off
 		$value = pg_escape_string($this->connection, $value);
 		$value = strtr($value, ['%' => $bs . '%', '_' => $bs . '_', '\\' => '\\\\']);
-		return ($pos <= 0 ? "'%" : "'") . $value . ($pos >= 0 ? "%'" : "'");
+		return ($pos & 1 ? "'%" : "'") . $value . ($pos & 2 ? "%'" : "'");
 	}
 
 

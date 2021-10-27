@@ -16,7 +16,10 @@ $conn = new Dibi\Connection($config + ['formatDateTime' => "'Y-m-d H:i:s.u'", 'f
 
 // Dibi detects INSERT or REPLACE command & booleans
 Assert::same(
-	reformat("REPLACE INTO [products] ([title], [price]) VALUES ('Drticka', 318)"),
+	reformat([
+		'sqlsrv' => "REPLACE INTO [products] ([title], [price]) VALUES (N'Drticka', 318)",
+		"REPLACE INTO [products] ([title], [price]) VALUES ('Drticka', 318)",
+	]),
 	$conn->translate('REPLACE INTO [products]', [
 		'title' => 'Drticka',
 		'price' => 318,
@@ -31,7 +34,10 @@ $array = [
 	'brand' => null,
 ];
 Assert::same(
-	reformat('INSERT INTO [products] ([title], [price], [brand]) VALUES (\'Super Product\', 12, NULL) , (\'Super Product\', 12, NULL) , (\'Super Product\', 12, NULL)'),
+	reformat([
+		'sqlsrv' => "INSERT INTO [products] ([title], [price], [brand]) VALUES (N'Super Product', 12, NULL) , (N'Super Product', 12, NULL) , (N'Super Product', 12, NULL)",
+		"INSERT INTO [products] ([title], [price], [brand]) VALUES ('Super Product', 12, NULL) , ('Super Product', 12, NULL) , ('Super Product', 12, NULL)",
+	]),
 	$conn->translate('INSERT INTO [products]', $array, $array, $array)
 );
 
@@ -43,14 +49,20 @@ $array = [
 	['pole' => 'hodnota3', 'bit' => 1],
 ];
 Assert::same(
-	reformat('INSERT INTO [products]  ([pole], [bit]) VALUES (\'hodnota1\', 1) , (\'hodnota2\', 1) , (\'hodnota3\', 1)'),
+	reformat([
+		'sqlsrv' => "INSERT INTO [products]  ([pole], [bit]) VALUES (N'hodnota1', 1) , (N'hodnota2', 1) , (N'hodnota3', 1)",
+		"INSERT INTO [products]  ([pole], [bit]) VALUES ('hodnota1', 1) , ('hodnota2', 1) , ('hodnota3', 1)",
+	]),
 	$conn->translate('INSERT INTO [products] %ex', $array)
 );
 
 
 // Dibi detects UPDATE command
 Assert::same(
-	reformat("UPDATE [colors] SET [color]='blue', [order]=12 WHERE [id]=123"),
+	reformat([
+		'sqlsrv' => "UPDATE [colors] SET [color]=N'blue', [order]=12 WHERE [id]=123",
+		"UPDATE [colors] SET [color]='blue', [order]=12 WHERE [id]=123",
+	]),
 	$conn->translate('UPDATE [colors] SET', [
 		'color' => 'blue',
 		'order' => 12,
@@ -85,17 +97,26 @@ $e = Assert::exception(function () use ($conn) {
 Assert::same('SELECT **Invalid combination of type stdClass and modifier %s** , **Unknown or unexpected modifier %m**', $e->getSql());
 
 Assert::same(
-	reformat('SELECT * FROM [table] WHERE id=10 AND name=\'ahoj\''),
+	reformat([
+		'sqlsrv' => "SELECT * FROM [table] WHERE id=10 AND name=N'ahoj'",
+		"SELECT * FROM [table] WHERE id=10 AND name='ahoj'",
+	]),
 	$conn->translate('SELECT * FROM [table] WHERE id=%i AND name=%s', 10, 'ahoj')
 );
 
 Assert::same(
-	reformat('TEST ([cond] > 2) OR ([cond2] = \'3\') OR (cond3 < RAND())'),
+	reformat([
+		'sqlsrv' => "TEST ([cond] > 2) OR ([cond2] = N'3') OR (cond3 < RAND())",
+		"TEST ([cond] > 2) OR ([cond2] = '3') OR (cond3 < RAND())",
+	]),
 	$conn->translate('TEST %or', ['[cond] > 2', '[cond2] = "3"', 'cond3 < RAND()'])
 );
 
 Assert::same(
-	reformat('TEST ([cond] > 2) AND ([cond2] = \'3\') AND (cond3 < RAND())'),
+	reformat([
+		'sqlsrv' => "TEST ([cond] > 2) AND ([cond2] = N'3') AND (cond3 < RAND())",
+		"TEST ([cond] > 2) AND ([cond2] = '3') AND (cond3 < RAND())",
+	]),
 	$conn->translate('TEST %and', ['[cond] > 2', '[cond2] = "3"', 'cond3 < RAND()'])
 );
 
@@ -114,7 +135,10 @@ $where['age'] = null;
 $where['email'] = 'ahoj';
 $where['id%l'] = [10, 20, 30];
 Assert::same(
-	reformat('SELECT * FROM [table] WHERE ([age] IS NULL) AND ([email] = \'ahoj\') AND ([id] IN (10, 20, 30))'),
+	reformat([
+		'sqlsrv' => "SELECT * FROM [table] WHERE ([age] IS NULL) AND ([email] = N'ahoj') AND ([id] IN (10, 20, 30))",
+		"SELECT * FROM [table] WHERE ([age] IS NULL) AND ([email] = 'ahoj') AND ([id] IN (10, 20, 30))",
+	]),
 	$conn->translate('SELECT * FROM [table] WHERE %and', $where)
 );
 
@@ -144,9 +168,9 @@ Assert::same(
 // with limit = 2
 Assert::same(
 	reformat([
-		'odbc' => 'SELECT TOP 2 * FROM (SELECT * FROM [products] ) t',
+		'odbc' => 'SELECT TOP 2 * FROM (SELECT * FROM [products]) t',
 		'sqlsrv' => 'SELECT * FROM [products] OFFSET 0 ROWS FETCH NEXT 2 ROWS ONLY',
-		'SELECT * FROM [products]  LIMIT 2',
+		'SELECT * FROM [products] LIMIT 2',
 	]),
 	$conn->translate('SELECT * FROM [products] %lmt', 2)
 );
@@ -160,7 +184,7 @@ if ($config['system'] === 'odbc') {
 	Assert::same(
 		reformat([
 			'sqlsrv' => 'SELECT * FROM [products] OFFSET 1 ROWS FETCH NEXT 2 ROWS ONLY',
-			'SELECT * FROM [products]   LIMIT 2 OFFSET 1',
+			'SELECT * FROM [products] LIMIT 2 OFFSET 1',
 		]),
 		$conn->translate('SELECT * FROM [products] %lmt %ofs', 2, 1)
 	);
@@ -168,10 +192,10 @@ if ($config['system'] === 'odbc') {
 	// with offset = 50
 	Assert::same(
 		reformat([
-			'mysql' => 'SELECT * FROM `products`  LIMIT 18446744073709551615 OFFSET 50',
-			'postgre' => 'SELECT * FROM "products"  OFFSET 50',
+			'mysql' => 'SELECT * FROM `products` LIMIT 18446744073709551615 OFFSET 50',
+			'postgre' => 'SELECT * FROM "products" OFFSET 50',
 			'sqlsrv' => 'SELECT * FROM [products] OFFSET 50 ROWS',
-			'SELECT * FROM [products]  LIMIT -1 OFFSET 50',
+			'SELECT * FROM [products] LIMIT -1 OFFSET 50',
 		]),
 		$conn->translate('SELECT * FROM [products] %ofs', 50)
 	);
@@ -237,7 +261,7 @@ if ($config['system'] === 'postgre') {
 			'sqlite' => "SELECT * FROM products WHERE (title LIKE 'C%' ESCAPE '\\' AND title LIKE '%r' ESCAPE '\\') OR title LIKE '%a\n\\%\\_\\\\''\"%' ESCAPE '\\'",
 			'odbc' => "SELECT * FROM products WHERE (title LIKE 'C%' AND title LIKE '%r') OR title LIKE '%a\n[%][_]\\''\"%'",
 			'sqlsrv' => "SELECT * FROM products WHERE (title LIKE 'C%' AND title LIKE '%r') OR title LIKE '%a\n[%][_]\\''\"%'",
-			"SELECT * FROM products WHERE (title LIKE 'C%' AND title LIKE '%r') OR title LIKE '%a\\n\\%\\_\\\\\\\\\'\"%'",
+			"SELECT * FROM products WHERE (title LIKE 'C%' AND title LIKE '%r') OR title LIKE '%a\\n\\%\\_\\\\\\\\\\'\"%'",
 		]),
 		$conn->translate($args[0], $args[1], $args[2], $args[3])
 	);
@@ -255,11 +279,17 @@ Assert::match(
 CONCAT(last_name, ', ', first_name) AS full_name
 GROUP BY `user`
 HAVING MAX(salary) > %i 123
-INTO OUTFILE '/tmp/result\'.txt'
+INTO OUTFILE '/tmp/result\\'.txt'
 FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\\\"'
 LINES TERMINATED BY '\\\\n'
 ",
-		"SELECT DISTINCT HIGH_PRIORITY SQL_BUFFER_RESULT
+		'sqlsrv' => "SELECT DISTINCT HIGH_PRIORITY SQL_BUFFER_RESULT
+CONCAT(last_name, N', ', first_name) AS full_name
+GROUP BY [user]
+HAVING MAX(salary) > %i 123
+INTO OUTFILE N'/tmp/result''.txt'
+FIELDS TERMINATED BY N',' OPTIONALLY ENCLOSED BY N'\"'
+LINES TERMINATED BY N'\\n'", "SELECT DISTINCT HIGH_PRIORITY SQL_BUFFER_RESULT
 CONCAT(last_name, ', ', first_name) AS full_name
 GROUP BY [user]
 HAVING MAX(salary) > %i 123
@@ -314,13 +344,34 @@ WHERE (`test`.`a` LIKE '1995-03-01'
 	OR `b8` IN (RAND() `col1` > `col2` )
 	OR `b9` IN (RAND(), [col1] > [col2] )
 	OR `b10` IN (  )
-	AND `c` = 'embedded \' string'
+	AND `c` = 'embedded \\' string'
 	OR `d`=10
 	OR `e`=NULL
 	OR `true`= 1
 	OR `false`= 0
 	OR `str_null`=NULL
 	OR `str_not_null`='hello'
+LIMIT 10",
+		'sqlsrv' => "SELECT *
+FROM [db].[table]
+WHERE ([test].[a] LIKE '1995-03-01'
+	OR [b1] IN ( 1, 2, 3 )
+	OR [b2] IN (N'1', N'2', N'3' )
+	OR [b3] IN ( )
+	OR [b4] IN ( N'one', N'two', N'three' )
+	OR [b5] IN ([col1] AS [one], [col2] AS [two], [col3] AS [thr.ee] )
+	OR [b6] IN (N'one', N'two', N'thr.ee')
+	OR [b7] IN (NULL)
+	OR [b8] IN (RAND() [col1] > [col2] )
+	OR [b9] IN (RAND(), [col1] > [col2] )
+	OR [b10] IN (  )
+	AND [c] = N'embedded '' string'
+	OR [d]=10
+	OR [e]=NULL
+	OR [true]= 1
+	OR [false]= 0
+	OR [str_null]=NULL
+	OR [str_not_null]=N'hello'
 LIMIT 10",
 		'postgre' => 'SELECT *
 FROM "db"."table"
@@ -386,7 +437,6 @@ WHERE ([test].[a] LIKE '1995-03-01'
 	OR [str_not_null]='hello'
 LIMIT 10",
 	]),
-
 	$conn->translate('SELECT *
 FROM [db.table]
 WHERE ([test.a] LIKE %d', '1995-03-01', '
@@ -412,7 +462,10 @@ LIMIT 10')
 
 
 Assert::same(
-	reformat('TEST  [cond] > 2 [cond2] = \'3\' cond3 < RAND() 123'),
+	reformat([
+		'sqlsrv' => "TEST  [cond] > 2 [cond2] = N'3' cond3 < RAND() 123",
+		"TEST  [cond] > 2 [cond2] = '3' cond3 < RAND() 123",
+	]),
 	$conn->translate('TEST %ex', ['[cond] > 2', '[cond2] = "3"', 'cond3 < RAND()'], 123)
 );
 
@@ -430,16 +483,19 @@ Assert::same(
 
 
 Assert::same(
-	reformat('TEST ([cond1] 3) OR ([cond2] RAND()) OR ([cond3] LIKE \'string\')'),
+	reformat([
+		'sqlsrv' => "TEST ([cond1] 3) OR ([cond2] RAND()) OR ([cond3] LIKE N'string')",
+		"TEST ([cond1] 3) OR ([cond2] RAND()) OR ([cond3] LIKE 'string')",
+	]),
 	$conn->translate('TEST %or', ['cond1%ex' => 3, 'cond2%ex' => 'RAND()', 'cond3%ex' => ['LIKE %s', 'string']])
 );
 
 
 Assert::same(
 	reformat([
-		'odbc' => 'SELECT TOP 10 * FROM (SELECT * FROM [test] WHERE [id] LIKE \'%d%t\' ) t',
-		'sqlsrv' => 'SELECT * FROM [test] WHERE [id] LIKE \'%d%t\' OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY',
-		'SELECT * FROM [test] WHERE [id] LIKE \'%d%t\'  LIMIT 10',
+		'odbc' => 'SELECT TOP 10 * FROM (SELECT * FROM [test] WHERE [id] LIKE \'%d%t\') t',
+		'sqlsrv' => 'SELECT * FROM [test] WHERE [id] LIKE N\'%d%t\' OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY',
+		'SELECT * FROM [test] WHERE [id] LIKE \'%d%t\' LIMIT 10',
 	]),
 	$conn->translate("SELECT * FROM [test] WHERE %n LIKE '%d%t' %lmt", 'id', 10)
 );
@@ -455,23 +511,32 @@ Assert::same(
 
 
 Assert::same(
-	reformat('SELECT FROM ... '),
+	reformat('SELECT FROM ...'),
 	$conn->translate('SELECT FROM ... %lmt', null)
 );
 
 Assert::same(
-	reformat('SELECT \'%i\''),
+	reformat([
+		'sqlsrv' => "SELECT N'%i'",
+		"SELECT '%i'",
+	]),
 	$conn->translate("SELECT '%i'")
 );
 
 Assert::same(
-	reformat('SELECT \'%i\''),
+	reformat([
+		'sqlsrv' => "SELECT N'%i'",
+		"SELECT '%i'",
+	]),
 	$conn->translate('SELECT "%i"')
 );
 
 
 Assert::same(
-	reformat('INSERT INTO [products] ([product_id], [title]) VALUES (1, SHA1(\'Test product\')) , (1, SHA1(\'Test product\'))'),
+	reformat([
+		'sqlsrv' => "INSERT INTO [products] ([product_id], [title]) VALUES (1, SHA1(N'Test product')) , (1, SHA1(N'Test product'))",
+		"INSERT INTO [products] ([product_id], [title]) VALUES (1, SHA1('Test product')) , (1, SHA1('Test product'))",
+	]),
 	$conn->translate('INSERT INTO [products]', [
 		'product_id' => 1,
 		'title' => new Dibi\Expression('SHA1(%s)', 'Test product'),
@@ -482,7 +547,10 @@ Assert::same(
 );
 
 Assert::same(
-	reformat('UPDATE [products] [product_id]=1, [title]=SHA1(\'Test product\')'),
+	reformat([
+		'sqlsrv' => "UPDATE [products] [product_id]=1, [title]=SHA1(N'Test product')",
+		"UPDATE [products] [product_id]=1, [title]=SHA1('Test product')",
+	]),
 	$conn->translate('UPDATE [products]', [
 		'product_id' => 1,
 		'title' => new Dibi\Expression('SHA1(%s)', 'Test product'),
@@ -490,7 +558,10 @@ Assert::same(
 );
 
 Assert::same(
-	reformat('UPDATE [products] [product_id]=1, [title]=SHA1(\'Test product\')'),
+	reformat([
+		'sqlsrv' => "UPDATE [products] [product_id]=1, [title]=SHA1(N'Test product')",
+		"UPDATE [products] [product_id]=1, [title]=SHA1('Test product')",
+	]),
 	$conn->translate('UPDATE [products]', [
 		'product_id' => 1,
 		'title' => new Dibi\Expression('SHA1(%s)', 'Test product'),
@@ -498,7 +569,10 @@ Assert::same(
 );
 
 Assert::same(
-	reformat('SELECT * FROM [products] WHERE [product_id]=1, [title]=SHA1(\'Test product\')'),
+	reformat([
+		'sqlsrv' => "SELECT * FROM [products] WHERE [product_id]=1, [title]=SHA1(N'Test product')",
+		"SELECT * FROM [products] WHERE [product_id]=1, [title]=SHA1('Test product')",
+	]),
 	$conn->translate('SELECT * FROM [products] WHERE', [
 		'product_id' => 1,
 		'title' => new Dibi\Expression('SHA1(%s)', 'Test product'),
@@ -535,7 +609,10 @@ $array6 = [
 ];
 
 Assert::same(
-	reformat('INSERT INTO test ([id], [text], [num]) VALUES (1, \'ahoj\', 1), (2, \'jak\', -1), (3, \'se\', 10), (4, SUM(5), 1)'),
+	reformat([
+		'sqlsrv' => "INSERT INTO test ([id], [text], [num]) VALUES (1, N'ahoj', 1), (2, N'jak', -1), (3, N'se', 10), (4, SUM(5), 1)",
+		"INSERT INTO test ([id], [text], [num]) VALUES (1, 'ahoj', 1), (2, 'jak', -1), (3, 'se', 10), (4, SUM(5), 1)",
+	]),
 	$conn->translate('INSERT INTO test %m', $array6)
 );
 
@@ -589,8 +666,10 @@ Assert::same(
 setlocale(LC_ALL, 'czech');
 
 Assert::same(
-	reformat("UPDATE [colors] SET [color]='blue', [price]=-12.4, [spec]=-9E-005, [spec2]=1000, [spec3]=10000, [spec4]=10000 WHERE [price]=123.5"),
-
+	reformat([
+		'sqlsrv' => "UPDATE [colors] SET [color]=N'blue', [price]=-12.4, [spec]=-9E-005, [spec2]=1000, [spec3]=10000, [spec4]=10000 WHERE [price]=123.5",
+		"UPDATE [colors] SET [color]='blue', [price]=-12.4, [spec]=-9E-005, [spec2]=1000, [spec3]=10000, [spec4]=10000 WHERE [price]=123.5",
+	]),
 	$conn->translate('UPDATE [colors] SET', [
 		'color' => 'blue',
 		'price' => -12.4,

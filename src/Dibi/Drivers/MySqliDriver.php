@@ -47,9 +47,7 @@ class MySqliDriver implements Dibi\Driver
 	private $buffered;
 
 
-	/**
-	 * @throws Dibi\NotSupportedException
-	 */
+	/** @throws Dibi\NotSupportedException */
 	public function __construct(array $config)
 	{
 		if (!extension_loaded('mysqli')) {
@@ -91,7 +89,7 @@ class MySqliDriver implements Dibi\Driver
 			@$this->connection->real_connect( // intentionally @
 				(empty($config['persistent']) ? '' : 'p:') . $config['host'],
 				$config['username'],
-				$config['password'],
+				$config['password'] ?? '',
 				$config['database'] ?? '',
 				$config['port'] ?? 0,
 				$config['socket'],
@@ -131,6 +129,15 @@ class MySqliDriver implements Dibi\Driver
 
 
 	/**
+	 * Pings a server connection, or tries to reconnect if the connection has gone down.
+	 */
+	public function ping(): bool
+	{
+		return $this->connection->ping();
+	}
+
+
+	/**
 	 * Executes the SQL query.
 	 * @throws Dibi\DriverException
 	 */
@@ -148,6 +155,9 @@ class MySqliDriver implements Dibi\Driver
 	}
 
 
+	/**
+	 * @param int|string $code
+	 */
 	public static function createException(string $message, $code, string $sql): Dibi\DriverException
 	{
 		if (in_array($code, [1216, 1217, 1451, 1452, 1701], true)) {
@@ -188,7 +198,9 @@ class MySqliDriver implements Dibi\Driver
 	 */
 	public function getAffectedRows(): ?int
 	{
-		return $this->connection->affected_rows === -1 ? null : $this->connection->affected_rows;
+		return $this->connection->affected_rows === -1
+			? null
+			: $this->connection->affected_rows;
 	}
 
 
@@ -197,7 +209,7 @@ class MySqliDriver implements Dibi\Driver
 	 */
 	public function getInsertId(?string $sequence): ?int
 	{
-		return $this->connection->insert_id;
+		return $this->connection->insert_id ?: null;
 	}
 
 
@@ -288,27 +300,24 @@ class MySqliDriver implements Dibi\Driver
 	}
 
 
-	/**
-	 * @param  \DateTimeInterface|string|int  $value
-	 */
-	public function escapeDate($value): string
+	public function escapeDate(\DateTimeInterface $value): string
 	{
-		if (!$value instanceof \DateTimeInterface) {
-			$value = new Dibi\DateTime($value);
-		}
 		return $value->format("'Y-m-d'");
 	}
 
 
-	/**
-	 * @param  \DateTimeInterface|string|int  $value
-	 */
-	public function escapeDateTime($value): string
+	public function escapeDateTime(\DateTimeInterface $value): string
 	{
-		if (!$value instanceof \DateTimeInterface) {
-			$value = new Dibi\DateTime($value);
-		}
 		return $value->format("'Y-m-d H:i:s.u'");
+	}
+
+
+	public function escapeDateInterval(\DateInterval $value): string
+	{
+		if ($value->y || $value->m || $value->d) {
+			throw new Dibi\NotSupportedException('Only time interval is supported.');
+		}
+		return $value->format("'%r%H:%I:%S.%f'");
 	}
 
 
@@ -318,7 +327,7 @@ class MySqliDriver implements Dibi\Driver
 	public function escapeLike(string $value, int $pos): string
 	{
 		$value = addcslashes(str_replace('\\', '\\\\', $value), "\x00\n\r\\'%_");
-		return ($pos <= 0 ? "'%" : "'") . $value . ($pos >= 0 ? "%'" : "'");
+		return ($pos & 1 ? "'%" : "'") . $value . ($pos & 2 ? "%'" : "'");
 	}
 
 
@@ -332,7 +341,7 @@ class MySqliDriver implements Dibi\Driver
 
 		} elseif ($limit !== null || $offset) {
 			// see http://dev.mysql.com/doc/refman/5.0/en/select.html
-			$sql .= ' LIMIT ' . ($limit === null ? '18446744073709551615' : $limit)
+			$sql .= ' LIMIT ' . ($limit ?? '18446744073709551615')
 				. ($offset ? ' OFFSET ' . $offset : '');
 		}
 	}

@@ -40,9 +40,7 @@ class FirebirdDriver implements Dibi\Driver
 	private $inTransaction = false;
 
 
-	/**
-	 * @throws Dibi\NotSupportedException
-	 */
+	/** @throws Dibi\NotSupportedException */
 	public function __construct(array $config)
 	{
 		if (!extension_loaded('interbase')) {
@@ -64,11 +62,9 @@ class FirebirdDriver implements Dibi\Driver
 				'buffers' => 0,
 			];
 
-			if (empty($config['persistent'])) {
-				$this->connection = @ibase_connect($config['database'], $config['username'], $config['password'], $config['charset'], $config['buffers']); // intentionally @
-			} else {
-				$this->connection = @ibase_pconnect($config['database'], $config['username'], $config['password'], $config['charset'], $config['buffers']); // intentionally @
-			}
+			$this->connection = empty($config['persistent'])
+				? @ibase_connect($config['database'], $config['username'], $config['password'], $config['charset'], $config['buffers']) // intentionally @
+				: @ibase_pconnect($config['database'], $config['username'], $config['password'], $config['charset'], $config['buffers']); // intentionally @
 
 			if (!is_resource($this->connection)) {
 				throw new Dibi\DriverException(ibase_errmsg(), ibase_errcode());
@@ -92,11 +88,13 @@ class FirebirdDriver implements Dibi\Driver
 	 */
 	public function query(string $sql): ?Dibi\ResultDriver
 	{
-		$resource = $this->inTransaction ? $this->transaction : $this->connection;
+		$resource = $this->inTransaction
+			? $this->transaction
+			: $this->connection;
 		$res = ibase_query($resource, $sql);
 
 		if ($res === false) {
-			if (ibase_errcode() == self::ERROR_EXCEPTION_THROWN) {
+			if (ibase_errcode() === self::ERROR_EXCEPTION_THROWN) {
 				preg_match('/exception (\d+) (\w+) (.*)/i', ibase_errmsg(), $match);
 				throw new Dibi\ProcedureException($match[3], $match[1], $match[2], $sql);
 
@@ -247,27 +245,21 @@ class FirebirdDriver implements Dibi\Driver
 	}
 
 
-	/**
-	 * @param  \DateTimeInterface|string|int  $value
-	 */
-	public function escapeDate($value): string
+	public function escapeDate(\DateTimeInterface $value): string
 	{
-		if (!$value instanceof \DateTimeInterface) {
-			$value = new Dibi\DateTime($value);
-		}
 		return $value->format("'Y-m-d'");
 	}
 
 
-	/**
-	 * @param  \DateTimeInterface|string|int  $value
-	 */
-	public function escapeDateTime($value): string
+	public function escapeDateTime(\DateTimeInterface $value): string
 	{
-		if (!$value instanceof \DateTimeInterface) {
-			$value = new Dibi\DateTime($value);
-		}
 		return "'" . substr($value->format('Y-m-d H:i:s.u'), 0, -2) . "'";
+	}
+
+
+	public function escapeDateInterval(\DateInterval $value): string
+	{
+		throw new Dibi\NotImplementedException;
 	}
 
 
@@ -277,7 +269,7 @@ class FirebirdDriver implements Dibi\Driver
 	public function escapeLike(string $value, int $pos): string
 	{
 		$value = addcslashes($this->escapeText($value), '%_\\');
-		return ($pos <= 0 ? "'%" : "'") . $value . ($pos >= 0 ? "%'" : "'") . " ESCAPE '\\'";
+		return ($pos & 1 ? "'%" : "'") . $value . ($pos & 2 ? "%'" : "'") . " ESCAPE '\\'";
 	}
 
 

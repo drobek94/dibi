@@ -30,7 +30,14 @@ namespace Dibi;
  * @method Fluent as(...$field)
  * @method Fluent on(...$cond)
  * @method Fluent and(...$cond)
+ * @method Fluent or(...$cond)
  * @method Fluent using(...$cond)
+ * @method Fluent update(...$cond)
+ * @method Fluent insert(...$cond)
+ * @method Fluent delete(...$cond)
+ * @method Fluent into(...$cond)
+ * @method Fluent values(...$cond)
+ * @method Fluent set(...$args)
  * @method Fluent asc()
  * @method Fluent desc()
  */
@@ -112,7 +119,7 @@ class Fluent implements IDataSource
 		$this->connection = $connection;
 
 		if (self::$normalizer === null) {
-			self::$normalizer = new HashMap([__CLASS__, '_formatClause']);
+			self::$normalizer = new HashMap([self::class, '_formatClause']);
 		}
 	}
 
@@ -304,11 +311,9 @@ class Fluent implements IDataSource
 	 */
 	public function fetch()
 	{
-		if ($this->command === 'SELECT' && !$this->clauses['LIMIT']) {
-			return $this->query($this->_export(null, ['%lmt', 1]))->fetch();
-		} else {
-			return $this->query($this->_export())->fetch();
-		}
+		return $this->command === 'SELECT' && !$this->clauses['LIMIT']
+			? $this->query($this->_export(null, ['%lmt', 1]))->fetch()
+			: $this->query($this->_export())->fetch();
 	}
 
 
@@ -318,11 +323,9 @@ class Fluent implements IDataSource
 	 */
 	public function fetchSingle()
 	{
-		if ($this->command === 'SELECT' && !$this->clauses['LIMIT']) {
-			return $this->query($this->_export(null, ['%lmt', 1]))->fetchSingle();
-		} else {
-			return $this->query($this->_export())->fetchSingle();
-		}
+		return $this->command === 'SELECT' && !$this->clauses['LIMIT']
+			? $this->query($this->_export(null, ['%lmt', 1]))->fetchSingle()
+			: $this->query($this->_export())->fetchSingle();
 	}
 
 
@@ -422,7 +425,7 @@ class Fluent implements IDataSource
 		if ($clause === null) {
 			$data = $this->clauses;
 			if ($this->command === 'SELECT' && ($data['LIMIT'] || $data['OFFSET'])) {
-				$args = array_merge(['%lmt %ofs', $data['LIMIT'][0], $data['OFFSET'][0]], $args);
+				$args = array_merge(['%lmt %ofs', $data['LIMIT'][0] ?? null, $data['OFFSET'][0] ?? null], $args);
 				unset($data['LIMIT'], $data['OFFSET']);
 			}
 

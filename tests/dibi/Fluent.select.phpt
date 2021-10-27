@@ -95,9 +95,9 @@ $fluent = $conn->select('*')
 
 Assert::same(
 	reformat([
-		'odbc' => 'SELECT TOP 1 * FROM (  SELECT * , (SELECT count(*) FROM [precteni] AS [P] WHERE P.id_clanku = C.id_clanku) FROM [clanky] AS [C] WHERE id_clanku=123) t',
-		'sqlsrv' => '  SELECT * , (SELECT count(*) FROM [precteni] AS [P] WHERE P.id_clanku = C.id_clanku) FROM [clanky] AS [C] WHERE id_clanku=123 OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
-		'  SELECT * , (SELECT count(*) FROM [precteni] AS [P] WHERE P.id_clanku = C.id_clanku) FROM [clanky] AS [C] WHERE id_clanku=123 LIMIT 1',
+		'odbc' => 'SELECT TOP 1 * FROM (SELECT * , (SELECT count(*) FROM [precteni] AS [P] WHERE P.id_clanku = C.id_clanku) FROM [clanky] AS [C] WHERE id_clanku=123) t',
+		'sqlsrv' => 'SELECT * , (SELECT count(*) FROM [precteni] AS [P] WHERE P.id_clanku = C.id_clanku) FROM [clanky] AS [C] WHERE id_clanku=123 OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY',
+		'SELECT * , (SELECT count(*) FROM [precteni] AS [P] WHERE P.id_clanku = C.id_clanku) FROM [clanky] AS [C] WHERE id_clanku=123 LIMIT 1',
 	]),
 	(string) $fluent
 );
@@ -134,7 +134,10 @@ $fluent = $conn->select('*')
 	->where(['x' => 'a', 'b', 'c']);
 
 Assert::same(
-	reformat('SELECT * FROM [me] AS [t] WHERE col > 10 AND ([x] = \'a\') AND (b) AND (c)'),
+	reformat([
+		'sqlsrv' => "SELECT * FROM [me] AS [t] WHERE col > 10 AND ([x] = N'a') AND (b) AND (c)",
+		"SELECT * FROM [me] AS [t] WHERE col > 10 AND ([x] = 'a') AND (b) AND (c)",
+	]),
 	(string) $fluent
 );
 

@@ -14,7 +14,13 @@ Introduction
 Database access functions in PHP are not standardised. This library
 hides the differences between them, and above all, it gives you a very handy interface.
 
-If you like Dibi, **[please make a donation now](https://nette.org/make-donation?to=dibi)**. Thank you!
+
+Support Project
+---------------
+
+Do you like Dibi? Are you looking forward to the new features?
+
+[![Donate](https://files.nette.org/icons/donation-1.svg?)](https://nette.org/make-donation?to=dibi)
 
 
 Installation
@@ -26,7 +32,7 @@ Install Dibi via Composer:
 composer require dibi/dibi
 ```
 
-The Dibi 4.0 requires PHP version 7.1 and supports PHP up to 7.2. Older Dibi 3.x requires PHP 5.4 and supports PHP up to 7.2.
+The Dibi 4.1 requires PHP version 7.1 and supports PHP up to 8.0.
 
 
 Usage
@@ -42,11 +48,11 @@ The database connection is represented by the object `Dibi\Connection`:
 
 ```php
 $database = new Dibi\Connection([
-    'driver'   => 'mysqli',
-    'host'     => 'localhost',
-    'username' => 'root',
-    'password' => '***',
-    'database' => 'table',
+	'driver'   => 'mysqli',
+	'host'     => 'localhost',
+	'username' => 'root',
+	'password' => '***',
+	'database' => 'table',
 ]);
 
 $result = $database->query('SELECT * FROM users');
@@ -56,12 +62,12 @@ Alternatively, you can use the `dibi` static register, which maintains a connect
 
 ```php
 dibi::connect([
-    'driver'   => 'mysqli',
-    'host'     => 'localhost',
-    'username' => 'root',
-    'password' => '***',
-    'database' => 'test',
-    'charset'  => 'utf8',
+	'driver'   => 'mysqli',
+	'host'     => 'localhost',
+	'username' => 'root',
+	'password' => '***',
+	'database' => 'test',
+	'charset'  => 'utf8',
 ]);
 
 $result = dibi::query('SELECT * FROM users');
@@ -74,6 +80,8 @@ In the event of a connection error, it throws `Dibi\Exception`.
 ### Queries
 
 We query the database queries by the method `query()` which returns `Dibi\Result`. Rows are objects `Dibi\Row`.
+
+You can try all the examples [online at the playground](https://repl.it/@DavidGrudl/dibi-playground).
 
 ```php
 $result = $database->query('SELECT * FROM users');
@@ -110,7 +118,7 @@ $ids = [10, 20, 30];
 $result = $database->query('SELECT * FROM users WHERE id IN (?)', $ids);
 ```
 
-**WARNING, never concencate parameters to SQL, the vulnerability would arise [SQL injection](https://en.wikipedia.org/wiki/SQL_injection)**
+**WARNING: Never concatenate parameters to SQL. It would create a [SQL injection](https://en.wikipedia.org/wiki/SQL_injection)** vulnerability.
 ```
 $result = $database->query('SELECT * FROM users WHERE id = ' . $id); // BAD!!!
 ```
@@ -147,7 +155,7 @@ $name = $database->fetchSingle('SELECT name FROM users WHERE id = ?', $id);
 
 ### Modifiers
 
-In addition to the `?` wild char, we can also use modifiers:
+In addition to the `?` wildcard char, we can also use modifiers:
 
 | modifier | description
 |----------|-----
@@ -161,6 +169,7 @@ In addition to the `?` wild char, we can also use modifiers:
 | %d | date (accepts DateTime, string or UNIX timestamp)
 | %dt | datetime (accepts DateTime, string or UNIX timestamp)
 | %n | identifier, ie the name of the table or column
+| %N | identifier, treats period as a common character, ie alias or a database name (`%n AS %N` or `DROP DATABASE %N`)
 | %SQL | SQL - directly inserts into SQL (the alternative is Dibi\Literal)
 | %ex | SQL expression or array of expressions
 | %lmt | special - adds LIMIT to the query
@@ -182,7 +191,7 @@ $result = $database->query('SELECT * FROM users WHERE id IN (%i)', $ids);
 // SELECT * FROM users WHERE id IN (10, 20, 30)
 ```
 
-The modifier '%n' is used if the table or column name is a variable. (Beware, do not allow the user to manipulate the content of such a variable):
+The modifier `%n` is used if the table or column name is a variable. (Beware, do not allow the user to manipulate the content of such a variable):
 
 ```php
 $table = 'blog.users';
@@ -198,6 +207,7 @@ Three special modifiers are available for LIKE:
 | `%like~` | the expression starts with a string
 | `%~like` | the expression ends with a string
 | `%~like~` | the expression contains a string
+| `%like` | the expression matches a string
 
 Search for names beginning with a string:
 
@@ -225,8 +235,8 @@ Example:
 
 ```php
 $arr = [
-    'a' => 'hello',
-    'b'  => true,
+	'a' => 'hello',
+	'b'  => true,
 ];
 
 $database->query('INSERT INTO table %v', $arr);
@@ -498,7 +508,7 @@ $all = $result->fetchAssoc('customer_id|order_id');
 // we will iterate like this:
 foreach ($all as $customerId => $orders) {
    foreach ($orders as $orderId => $order) {
-       ...
+	   ...
    }
 }
 ```
@@ -530,7 +540,7 @@ $all = $result->fetchAssoc('name[]order_id');
 // we get all the Arnolds in the results
 foreach ($all['Arnold Rimmer'] as $arnoldOrders) {
    foreach ($arnoldOrders as $orderId => $order) {
-       ...
+	   ...
    }
 }
 ```
@@ -544,8 +554,8 @@ foreach ($all as $customerId => $orders) {
    echo "Customer $customerId":
 
    foreach ($orders as $orderId => $order) {
-       echo "ID number: $order->number";
-       // customer name is in $order->name
+	   echo "ID number: $order->number";
+	   // customer name is in $order->name
    }
 }
 ```
@@ -567,7 +577,7 @@ foreach ($all as $customerId => $row) {
    echo "Customer $row->name":
 
    foreach ($row->order_id as $orderId => $order) {
-       echo "ID number: $order->number";
+	   echo "ID number: $order->number";
    }
 }
 ```
