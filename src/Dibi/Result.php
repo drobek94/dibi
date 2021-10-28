@@ -287,7 +287,7 @@ class Result implements IDataSource
 					}
 
 				} elseif ($as !== '|') { // associative-array node
-					$x = &$x[(string) $row->$as];
+					$x = &$x[(string) $row[$as]];
 				}
 			}
 
