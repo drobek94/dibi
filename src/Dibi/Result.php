@@ -41,10 +41,12 @@ class Result implements IDataSource
 	private $formats = [];
 
 
-	public function __construct(ResultDriver $driver)
+	public function __construct(ResultDriver $driver, bool $normalize = true)
 	{
 		$this->driver = $driver;
-		$this->detectTypes();
+		if ($normalize) {
+			$this->detectTypes();
+		}
 	}
 
 
@@ -454,8 +456,12 @@ class Result implements IDataSource
 				continue;
 			}
 			$value = $row[$key];
+			$format = $this->formats[$type] ?? null;
 
-			if ($type === Type::TEXT) {
+			if ($type === null || $format === 'native') {
+				$row[$key] = $value;
+
+			} elseif ($type === Type::TEXT) {
 				$row[$key] = (string) $value;
 
 			} elseif ($type === Type::INTEGER) {
@@ -483,19 +489,18 @@ class Result implements IDataSource
 				$row[$key] = ((bool) $value) && $value !== 'f' && $value !== 'F';
 
 			} elseif ($type === Type::DATETIME || $type === Type::DATE || $type === Type::TIME) {
-				if ($value && substr((string) $value, 0, 3) !== '000') { // '', null, false, '0000-00-00', ...
+				if ($value && substr((string) $value, 0, 7) !== '0000-00') { // '', null, false, '0000-00-00', ...
 					$value = new DateTime($value);
-					$row[$key] = empty($this->formats[$type])
-						? $value
-						: $value->format($this->formats[$type]);
+					$row[$key] = $format ? $value->format($format) : $value;
 				} else {
 					$row[$key] = null;
 				}
 
 			} elseif ($type === Type::TIME_INTERVAL) {
 				preg_match('#^(-?)(\d+)\D(\d+)\D(\d+)\z#', $value, $m);
-				$row[$key] = new \DateInterval("PT$m[2]H$m[3]M$m[4]S");
-				$row[$key]->invert = (int) (bool) $m[1];
+				$value = new \DateInterval("PT$m[2]H$m[3]M$m[4]S");
+				$value->invert = (int) (bool) $m[1];
+				$row[$key] = $format ? $value->format($format) : $value;
 
 			} elseif ($type === Type::BINARY) {
 				$row[$key] = is_string($value)
@@ -503,14 +508,11 @@ class Result implements IDataSource
 					: $value;
 
 			} elseif ($type === Type::JSON) {
-				if ($this->formats[$type] === 'string') {
+				if ($format === 'string') { // back compatibility with 'native'
 					$row[$key] = $value;
 				} else {
-					$row[$key] = json_decode($value, $this->formats[$type] === 'array');
+					$row[$key] = json_decode($value, $format === 'array');
 				}
-
-			} elseif ($type === null) {
-				$row[$key] = $value;
 
 			} else {
 				throw new \RuntimeException('Unexpected type ' . $type);
@@ -549,11 +551,21 @@ class Result implements IDataSource
 
 
 	/**
-	 * Sets date format.
+	 * Sets type format.
 	 */
 	final public function setFormat(string $type, ?string $format): self
 	{
 		$this->formats[$type] = $format;
+		return $this;
+	}
+
+
+	/**
+	 * Sets type formats.
+	 */
+	final public function setFormats(array $formats): self
+	{
+		$this->formats = $formats;
 		return $this;
 	}
 

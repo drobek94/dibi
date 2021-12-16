@@ -28,6 +28,9 @@ class Connection implements IConnection
 	/** @var array  Current connection configuration */
 	private $config;
 
+	/** @var string[]  resultset formats */
+	private $formats;
+
 	/** @var Driver|null */
 	private $driver;
 
@@ -42,17 +45,27 @@ class Connection implements IConnection
 
 	/** @var bool */
 	private $transactionStarted = false;
+	
+	private $transactionDepth = 0;
+
 
 	/**
 	 * Connection options: (see driver-specific options too)
 	 *   - lazy (bool) => if true, connection will be established only when required
 	 *   - result (array) => result set options
-	 *       - formatDateTime => date-time format (if empty, DateTime objects will be returned)
-	 *       - formatJson => json format (
-	 *           "string" for leaving value as is,
-	 *           "object" for decoding json as \stdClass,
-	 *           "array" for decoding json as an array - default
-	 *       )
+	 *       - normalize => normalizes result fields (default: true)
+	 *       - formatDateTime => date-time format
+	 *           empty for decoding as Dibi\DateTime (default)
+	 *           "..." formatted according to given format, see https://www.php.net/manual/en/datetime.format.php
+	 *           "native" for leaving value as is
+	 *       - formatTimeInterval => time-interval format
+	 *           empty for decoding as DateInterval (default)
+	 *           "..." formatted according to given format, see https://www.php.net/manual/en/dateinterval.format.php
+	 *           "native" for leaving value as is
+	 *       - formatJson => json format
+	 *           "array" for decoding json as an array (default)
+	 *           "object" for decoding json as \stdClass
+	 *           "native" for leaving value as is
 	 *   - profiler (array)
 	 *       - run (bool) => enable profiler?
 	 *       - file => file to log
@@ -70,8 +83,14 @@ class Connection implements IConnection
 		Helpers::alias($config, 'result|formatDateTime', 'resultDateTime');
 		$config['driver'] = $config['driver'] ?? 'mysqli';
 		$config['name'] = $name;
-		$config['result']['formatJson'] = $config['result']['formatJson'] ?? 'array';
 		$this->config = $config;
+
+		$this->formats = [
+			Type::DATE => $this->config['result']['formatDate'],
+			Type::DATETIME => $this->config['result']['formatDateTime'],
+			Type::JSON => $this->config['result']['formatJson'] ?? 'array',
+			Type::TIME_INTERVAL => $this->config['result']['formatTimeInterval'] ?? null,
+		];
 
 		// profiler
 		if (isset($config['profiler']['file']) && (!isset($config['profiler']['run']) || $config['profiler']['run'])) {
@@ -224,7 +243,7 @@ class Connection implements IConnection
 	 */
 	final public function query(...$args): Result
 	{
-		$query = $this->translateArgs($args);
+		$query = $this->translateArgs(...$args);
 
 		if ($this->isTransactional === true && $this->transactionStarted === false) {
 			$this->transactionStarted = true;
@@ -242,7 +261,10 @@ class Connection implements IConnection
 	 */
 	final public function translate(...$args): string
 	{
-		return $this->translateArgs($args);
+		if (!$this->driver) {
+			$this->connect();
+		}
+		return (clone $this->translator)->translate($args);
 	}
 
 
@@ -253,7 +275,7 @@ class Connection implements IConnection
 	final public function test(...$args): bool
 	{
 		try {
-			Helpers::dump($this->translateArgs($args));
+			Helpers::dump($this->translate(...$args));
 			return true;
 
 		} catch (Exception $e) {
@@ -274,19 +296,7 @@ class Connection implements IConnection
 	 */
 	final public function dataSource(...$args): DataSource
 	{
-		return new DataSource($this->translateArgs($args), $this);
-	}
-
-
-	/**
-	 * Generates SQL query.
-	 */
-	protected function translateArgs(array $args): string
-	{
-		if (!$this->driver) {
-			$this->connect();
-		}
-		return (clone $this->translator)->translate($args);
+		return new DataSource($this->translate(...$args), $this);
 	}
 
 
@@ -359,6 +369,10 @@ class Connection implements IConnection
 	 */
 	public function begin(string $savepoint = null): void
 	{
+		if ($this->transactionDepth !== 0) {
+			throw new \LogicException(__METHOD__ . '() call is forbidden inside a transaction() callback');
+		}
+
 		if (!$this->driver) {
 			$this->connect();
 		}
@@ -383,6 +397,10 @@ class Connection implements IConnection
 	 */
 	public function commit(string $savepoint = null): void
 	{
+		if ($this->transactionDepth !== 0) {
+			throw new \LogicException(__METHOD__ . '() call is forbidden inside a transaction() callback');
+		}
+
 		if (!$this->driver) {
 			$this->connect();
 		}
@@ -407,6 +425,10 @@ class Connection implements IConnection
 	 */
 	public function rollback(string $savepoint = null): void
 	{
+		if ($this->transactionDepth !== 0) {
+			throw new \LogicException(__METHOD__ . '() call is forbidden inside a transaction() callback');
+		}
+
 		if (!$this->driver) {
 			$this->connect();
 		}
@@ -427,14 +449,41 @@ class Connection implements IConnection
 
 
 	/**
+	 * @return mixed
+	 */
+	public function transaction(callable $callback)
+	{
+		if ($this->transactionDepth === 0) {
+			$this->begin();
+		}
+
+		$this->transactionDepth++;
+		try {
+			$res = $callback($this);
+		} catch (\Throwable $e) {
+			$this->transactionDepth--;
+			if ($this->transactionDepth === 0) {
+				$this->rollback();
+			}
+			throw $e;
+		}
+
+		$this->transactionDepth--;
+		if ($this->transactionDepth === 0) {
+			$this->commit();
+		}
+
+		return $res;
+	}
+
+
+	/**
 	 * Result set factory.
 	 */
 	public function createResultSet(ResultDriver $resultDriver): Result
 	{
-		$res = new Result($resultDriver);
-		return $res->setFormat(Type::DATE, $this->config['result']['formatDate'])
-			->setFormat(Type::DATETIME, $this->config['result']['formatDateTime'])
-			->setFormat(Type::JSON, $this->config['result']['formatJson']);
+		return (new Result($resultDriver, $this->config['result']['normalize'] ?? true))
+			->setFormats($this->formats);
 	}
 
 

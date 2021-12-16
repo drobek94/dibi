@@ -2,7 +2,7 @@
 =========================================================
 
 [![Downloads this Month](https://img.shields.io/packagist/dm/dibi/dibi.svg)](https://packagist.org/packages/dibi/dibi)
-[![Build Status](https://travis-ci.org/dg/dibi.svg?branch=master)](https://travis-ci.org/dg/dibi)
+[![Tests](https://github.com/dg/dibi/workflows/Tests/badge.svg?branch=master)](https://github.com/dg/dibi/actions)
 [![Build Status Windows](https://ci.appveyor.com/api/projects/status/github/dg/dibi?branch=master&svg=true)](https://ci.appveyor.com/project/dg/dibi/branch/master)
 [![Latest Stable Version](https://poser.pugx.org/dibi/dibi/v/stable)](https://github.com/dg/dibi/releases)
 [![License](https://img.shields.io/badge/license-New%20BSD-blue.svg)](https://github.com/dg/dibi/blob/master/license.md)
@@ -15,12 +15,14 @@ Database access functions in PHP are not standardised. This library
 hides the differences between them, and above all, it gives you a very handy interface.
 
 
-Support Project
----------------
+Support Me
+----------
 
 Do you like Dibi? Are you looking forward to the new features?
 
-[![Donate](https://files.nette.org/icons/donation-1.svg?)](https://nette.org/make-donation?to=dibi)
+[![Buy me a coffee](https://files.nette.org/icons/donation-3.svg)](https://github.com/sponsors/dg)
+
+Thank you!
 
 
 Installation
@@ -32,7 +34,7 @@ Install Dibi via Composer:
 composer require dibi/dibi
 ```
 
-The Dibi 4.1 requires PHP version 7.1 and supports PHP up to 8.0.
+The Dibi 4.2 requires PHP version 7.2 and supports PHP up to 8.1.
 
 
 Usage
