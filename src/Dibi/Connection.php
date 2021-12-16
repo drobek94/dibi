@@ -243,7 +243,7 @@ class Connection implements IConnection
 	 */
 	final public function query(...$args): Result
 	{
-		$query = $this->translateArgs(...$args);
+		$query = $this->translate(...$args);
 
 		if ($this->isTransactional === true && $this->transactionStarted === false) {
 			$this->transactionStarted = true;
