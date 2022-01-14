@@ -17,38 +17,28 @@ final class Translator
 {
 	use Strict;
 
-	/** @var Connection */
-	private $connection;
+	private Connection $connection;
 
-	/** @var Driver */
-	private $driver;
+	private Driver $driver;
 
-	/** @var int */
-	private $cursor = 0;
+	private int $cursor = 0;
 
-	/** @var array */
-	private $args;
+	private array $args;
 
 	/** @var string[] */
-	private $errors;
+	private array $errors;
 
-	/** @var bool */
-	private $comment = false;
+	private bool $comment = false;
 
-	/** @var int */
-	private $ifLevel = 0;
+	private int $ifLevel = 0;
 
-	/** @var int */
-	private $ifLevelStart = 0;
+	private int $ifLevelStart = 0;
 
-	/** @var int|null */
-	private $limit;
+	private ?int $limit = null;
 
-	/** @var int|null */
-	private $offset;
+	private ?int $offset = null;
 
-	/** @var HashMap */
-	private $identifiers;
+	private HashMap $identifiers;
 
 
 	public function __construct(Connection $connection)
@@ -69,6 +59,7 @@ final class Translator
 		while (count($args) === 1 && is_array($args[0])) { // implicit array expansion
 			$args = array_values($args[0]);
 		}
+
 		$this->args = $args;
 		$this->errors = [];
 
@@ -95,27 +86,27 @@ final class Translator
 						// note: this can change $this->args & $this->cursor & ...
 						. preg_replace_callback(
 							<<<'XX'
-							/
-							(?=[`['":%?])                       ## speed-up
-							(?:
-								`(.+?)`|                        ## 1) `identifier`
-								\[(.+?)\]|                      ## 2) [identifier]
-								(')((?:''|[^'])*)'|             ## 3,4) string
-								(")((?:""|[^"])*)"|             ## 5,6) "string"
-								('|")|                          ## 7) lone quote
-								:(\S*?:)([a-zA-Z0-9._]?)|       ## 8,9) :substitution:
-								%([a-zA-Z~][a-zA-Z0-9~]{0,5})|  ## 10) modifier
-								(\?)                            ## 11) placeholder
-							)/xs
-XX
-,
+								/
+								(?=[`['":%?])                       ## speed-up
+								(?:
+									`(.+?)`|                        ## 1) `identifier`
+									\[(.+?)\]|                      ## 2) [identifier]
+									(')((?:''|[^'])*)'|             ## 3,4) string
+									(")((?:""|[^"])*)"|             ## 5,6) "string"
+									('|")|                          ## 7) lone quote
+									:(\S*?:)([a-zA-Z0-9._]?)|       ## 8,9) :substitution:
+									%([a-zA-Z~][a-zA-Z0-9~]{0,5})|  ## 10) modifier
+									(\?)                            ## 11) placeholder
+								)/xs
+								XX,
 							[$this, 'cb'],
-							substr($arg, $toSkip)
+							substr($arg, $toSkip),
 						);
 					if (preg_last_error()) {
 						throw new PcreException;
 					}
 				}
+
 				continue;
 			}
 
@@ -138,8 +129,10 @@ XX
 					if ($lastArr === $cursor - 1) {
 						$sql[] = ',';
 					}
+
 					$sql[] = $this->formatValue($arg, $commandIns ? 'l' : 'a');
 				}
+
 				$lastArr = $cursor;
 				continue;
 			}
@@ -147,7 +140,6 @@ XX
 			// default processing
 			$sql[] = $this->formatValue($arg, null);
 		} // while
-
 
 		if ($comment) {
 			$sql[] = '*/';
@@ -170,9 +162,8 @@ XX
 
 	/**
 	 * Apply modifier to single value.
-	 * @param  mixed  $value
 	 */
-	public function formatValue($value, ?string $modifier): string
+	public function formatValue(mixed $value, ?string $modifier): string
 	{
 		if ($this->comment) {
 			return '...';
@@ -207,20 +198,21 @@ XX
 								$v = $this->formatValue($v, $pair[1]);
 								if ($pair[1] === 'l' || $pair[1] === 'in') {
 									$op = 'IN ';
-								} elseif (strpos($pair[1], 'like') !== false) {
+								} elseif (str_contains($pair[1], 'like')) {
 									$op = 'LIKE ';
 								} elseif ($v === 'NULL') {
 									$op = 'IS ';
 								} else {
 									$op = '= ';
 								}
+
 								$vx[] = $k . $op . $v;
 							}
-
 						} else {
 							$vx[] = $this->formatValue($v, 'ex');
 						}
 					}
+
 					return '(' . implode(') ' . strtoupper($modifier) . ' (', $vx) . ')';
 
 				case 'n':  // key, key, ... identifier names
@@ -232,6 +224,7 @@ XX
 							$vx[] = $this->identifiers->{$pair[0]};
 						}
 					}
+
 					return implode(', ', $vx);
 
 
@@ -241,6 +234,7 @@ XX
 						$vx[] = $this->identifiers->{$pair[0]} . '='
 							. $this->formatValue($v, $pair[1] ?? (is_array($v) ? 'ex!' : null));
 					}
+
 					return implode(', ', $vx);
 
 
@@ -250,6 +244,7 @@ XX
 						$pair = explode('%', (string) $k, 2); // split into identifier & modifier
 						$vx[] = $this->formatValue($v, $pair[1] ?? (is_array($v) ? 'ex!' : null));
 					}
+
 					return '(' . (($vx || $modifier === 'l') ? implode(', ', $vx) : 'NULL') . ')';
 
 
@@ -259,6 +254,7 @@ XX
 						$kx[] = $this->identifiers->{$pair[0]};
 						$vx[] = $this->formatValue($v, $pair[1] ?? (is_array($v) ? 'ex!' : null));
 					}
+
 					return '(' . implode(', ', $kx) . ') VALUES (' . implode(', ', $vx) . ')';
 
 				case 'm': // (key, key, ...) VALUES (val, val, ...), (val, val, ...), ...
@@ -272,7 +268,7 @@ XX
 								$proto = array_keys($v);
 							}
 						} else {
-							return $this->errors[] = '**Unexpected type ' . (is_object($v) ? get_class($v) : gettype($v)) . '**';
+							return $this->errors[] = '**Unexpected type ' . (is_object($v) ? $v::class : gettype($v)) . '**';
 						}
 
 						$pair = explode('%', $k, 2); // split into identifier & modifier
@@ -281,9 +277,11 @@ XX
 							$vx[$k2][] = $this->formatValue($v2, $pair[1] ?? (is_array($v2) ? 'ex!' : null));
 						}
 					}
+
 					foreach ($vx as $k => $v) {
 						$vx[$k] = '(' . implode(', ', $v) . ')';
 					}
+
 					return '(' . implode(', ', $kx) . ') VALUES ' . implode(', ', $vx);
 
 				case 'by': // key ASC, key DESC
@@ -297,6 +295,7 @@ XX
 							$vx[] = $this->identifiers->$v;
 						}
 					}
+
 					return implode(', ', $vx);
 
 				case 'ex!':
@@ -310,10 +309,10 @@ XX
 					foreach ($value as $v) {
 						$vx[] = $this->formatValue($v, $modifier);
 					}
+
 					return implode(', ', $vx);
 			}
 		}
-
 
 		// with modifier procession
 		if ($modifier) {
@@ -333,7 +332,7 @@ XX
 				) {
 					// continue
 				} else {
-					$type = is_object($value) ? get_class($value) : gettype($value);
+					$type = is_object($value) ? $value::class : gettype($value);
 					return $this->errors[] = "**Invalid combination of type $type and modifier %$modifier**";
 				}
 			}
@@ -405,6 +404,7 @@ XX
 						}
 						return $modifier === 'd' ? $this->driver->escapeDate($value) : $this->driver->escapeDateTime($value);
 					}
+
 					return $modifier === 'd'
 						? $this->driver->escapeDate($value)
 						: $this->driver->escapeDateTime($value);
@@ -425,25 +425,26 @@ XX
 						$value = substr($value, 0, $toSkip)
 							. preg_replace_callback(
 								<<<'XX'
-								/
-								(?=[`['":])
-								(?:
-									`(.+?)`|
-									\[(.+?)\]|
-									(')((?:''|[^'])*)'|
-									(")((?:""|[^"])*)"|
-									('|")|
-									:(\S*?:)([a-zA-Z0-9._]?)
-								)/sx
-XX
+																	/
+																	(?=[`['":])
+																	(?:
+																		`(.+?)`|
+																		\[(.+?)\]|
+																		(')((?:''|[^'])*)'|
+																		(")((?:""|[^"])*)"|
+																		('|")|
+																		:(\S*?:)([a-zA-Z0-9._]?)
+																	)/sx
+									XX
 ,
 								[$this, 'cb'],
-								substr($value, $toSkip)
+								substr($value, $toSkip),
 							);
 						if (preg_last_error()) {
 							throw new PcreException;
 						}
 					}
+
 					return $value;
 
 				case 'SQL': // preserve as real SQL (TODO: rename to %sql)
@@ -474,6 +475,10 @@ XX
 			}
 		}
 
+		// object-to-scalar procession
+		if ($value instanceof \BackedEnum && is_scalar($value->value)) {
+			$value = $value->value;
+		}
 
 		// without modifier procession
 		if (is_string($value)) {
@@ -504,7 +509,7 @@ XX
 			return $this->connection->translate(...$value->getValues());
 
 		} else {
-			$type = is_object($value) ? get_class($value) : gettype($value);
+			$type = is_object($value) ? $value::class : gettype($value);
 			return $this->errors[] = "**Unexpected $type**";
 		}
 	}
@@ -556,6 +561,7 @@ XX
 					$this->comment = true;
 					return '/*';
 				}
+
 				return '';
 
 			} elseif ($mod === 'else') {
@@ -568,7 +574,6 @@ XX
 					$this->comment = true;
 					return '/*';
 				}
-
 			} elseif ($mod === 'end') {
 				$this->ifLevel--;
 				if ($this->ifLevelStart === $this->ifLevel + 1) {
@@ -577,6 +582,7 @@ XX
 					$this->comment = false;
 					return '*/';
 				}
+
 				return '';
 
 			} elseif ($mod === 'ex') { // array expansion
@@ -591,6 +597,7 @@ XX
 				} else {
 					$this->limit = Helpers::intVal($arg);
 				}
+
 				return '';
 
 			} elseif ($mod === 'ofs') { // apply offset
@@ -601,6 +608,7 @@ XX
 				} else {
 					$this->offset = Helpers::intVal($arg);
 				}
+
 				return '';
 
 			} else { // default processing
@@ -654,6 +662,7 @@ XX
 				$v = $this->driver->escapeIdentifier($v);
 			}
 		}
+
 		return implode('.', $parts);
 	}
 }

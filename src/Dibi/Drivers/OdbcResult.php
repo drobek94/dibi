@@ -22,11 +22,9 @@ class OdbcResult implements Dibi\ResultDriver
 	/** @var resource */
 	private $resultSet;
 
-	/** @var bool */
-	private $autoFree = true;
+	private bool $autoFree = true;
 
-	/** @var int  Cursor */
-	private $row = 0;
+	private int $row = 0;
 
 
 	/**
@@ -72,11 +70,13 @@ class OdbcResult implements Dibi\ResultDriver
 			if (!odbc_fetch_row($set, ++$this->row)) {
 				return null;
 			}
+
 			$count = odbc_num_fields($set);
 			$cols = [];
 			for ($i = 1; $i <= $count; $i++) {
 				$cols[] = odbc_result($set, $i);
 			}
+
 			return $cols;
 		}
 	}
@@ -116,6 +116,7 @@ class OdbcResult implements Dibi\ResultDriver
 				'nativetype' => odbc_field_type($this->resultSet, $i),
 			];
 		}
+
 		return $columns;
 	}
 
@@ -124,7 +125,7 @@ class OdbcResult implements Dibi\ResultDriver
 	 * Returns the result set resource.
 	 * @return resource|null
 	 */
-	public function getResultResource()
+	public function getResultResource(): mixed
 	{
 		$this->autoFree = false;
 		return is_resource($this->resultSet) ? $this->resultSet : null;

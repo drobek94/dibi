@@ -27,14 +27,11 @@ class SqliteDriver implements Dibi\Driver
 {
 	use Dibi\Strict;
 
-	/** @var SQLite3 */
-	private $connection;
+	private SQLite3 $connection;
 
-	/** @var string  Date format */
-	private $fmtDate;
+	private string $fmtDate;
 
-	/** @var string  Datetime format */
-	private $fmtDateTime;
+	private string $fmtDateTime;
 
 
 	/** @throws Dibi\NotSupportedException */
@@ -57,7 +54,7 @@ class SqliteDriver implements Dibi\Driver
 		} else {
 			try {
 				$this->connection = new SQLite3($config['database']);
-			} catch (\Exception $e) {
+			} catch (\Throwable $e) {
 				throw new Dibi\DriverException($e->getMessage(), $e->getCode());
 			}
 		}
@@ -92,6 +89,7 @@ class SqliteDriver implements Dibi\Driver
 		} elseif ($res instanceof \SQLite3Result && $res->numColumns()) {
 			return $this->createResultDriver($res);
 		}
+
 		return null;
 	}
 
@@ -101,19 +99,19 @@ class SqliteDriver implements Dibi\Driver
 		if ($code !== 19) {
 			return new Dibi\DriverException($message, $code, $sql);
 
-		} elseif (strpos($message, 'must be unique') !== false
-			|| strpos($message, 'is not unique') !== false
-			|| strpos($message, 'UNIQUE constraint failed') !== false
+		} elseif (str_contains($message, 'must be unique')
+			|| str_contains($message, 'is not unique')
+			|| str_contains($message, 'UNIQUE constraint failed')
 		) {
 			return new Dibi\UniqueConstraintViolationException($message, $code, $sql);
 
-		} elseif (strpos($message, 'may not be null') !== false
-			|| strpos($message, 'NOT NULL constraint failed') !== false
+		} elseif (str_contains($message, 'may not be null')
+			|| str_contains($message, 'NOT NULL constraint failed')
 		) {
 			return new Dibi\NotNullConstraintViolationException($message, $code, $sql);
 
-		} elseif (strpos($message, 'foreign key constraint failed') !== false
-			|| strpos($message, 'FOREIGN KEY constraint failed') !== false
+		} elseif (str_contains($message, 'foreign key constraint failed')
+			|| str_contains($message, 'FOREIGN KEY constraint failed')
 		) {
 			return new Dibi\ForeignKeyConstraintViolationException($message, $code, $sql);
 
@@ -145,7 +143,7 @@ class SqliteDriver implements Dibi\Driver
 	 * Begins a transaction (if supported).
 	 * @throws Dibi\DriverException
 	 */
-	public function begin(string $savepoint = null): void
+	public function begin(?string $savepoint = null): void
 	{
 		$this->query($savepoint ? "SAVEPOINT $savepoint" : 'BEGIN');
 	}
@@ -155,7 +153,7 @@ class SqliteDriver implements Dibi\Driver
 	 * Commits statements in a transaction.
 	 * @throws Dibi\DriverException
 	 */
-	public function commit(string $savepoint = null): void
+	public function commit(?string $savepoint = null): void
 	{
 		$this->query($savepoint ? "RELEASE SAVEPOINT $savepoint" : 'COMMIT');
 	}
@@ -165,7 +163,7 @@ class SqliteDriver implements Dibi\Driver
 	 * Rollback changes in a transaction.
 	 * @throws Dibi\DriverException
 	 */
-	public function rollback(string $savepoint = null): void
+	public function rollback(?string $savepoint = null): void
 	{
 		$this->query($savepoint ? "ROLLBACK TO SAVEPOINT $savepoint" : 'ROLLBACK');
 	}
@@ -290,7 +288,7 @@ class SqliteDriver implements Dibi\Driver
 		string $name,
 		callable $rowCallback,
 		callable $agrCallback,
-		int $numArgs = -1
+		int $numArgs = -1,
 	): void {
 		$this->connection->createAggregate($name, $rowCallback, $agrCallback, $numArgs);
 	}

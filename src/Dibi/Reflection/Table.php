@@ -27,26 +27,22 @@ class Table
 {
 	use Dibi\Strict;
 
-	/** @var Dibi\Reflector */
-	private $reflector;
+	private Dibi\Reflector $reflector;
 
-	/** @var string */
-	private $name;
+	private string $name;
 
-	/** @var bool */
-	private $view;
+	private bool $view;
 
-	/** @var Column[]|null */
-	private $columns;
+	/** @var Column[] */
+	private array $columns;
 
-	/** @var ForeignKey[]|null */
-	private $foreignKeys;
+	/** @var ForeignKey[] */
+	private array $foreignKeys;
 
-	/** @var Index[]|null */
-	private $indexes;
+	/** @var Index[] */
+	private array $indexes;
 
-	/** @var Index|null */
-	private $primaryKey;
+	private ?Index $primaryKey;
 
 
 	public function __construct(Dibi\Reflector $reflector, array $info)
@@ -85,6 +81,7 @@ class Table
 		foreach ($this->columns as $column) {
 			$res[] = $column->getName();
 		}
+
 		return $res;
 	}
 
@@ -134,7 +131,7 @@ class Table
 
 	protected function initColumns(): void
 	{
-		if ($this->columns === null) {
+		if (!isset($this->columns)) {
 			$this->columns = [];
 			foreach ($this->reflector->getColumns($this->name) as $info) {
 				$this->columns[strtolower($info['name'])] = new Column($this->reflector, $info);
@@ -145,13 +142,14 @@ class Table
 
 	protected function initIndexes(): void
 	{
-		if ($this->indexes === null) {
+		if (!isset($this->indexes)) {
 			$this->initColumns();
 			$this->indexes = [];
 			foreach ($this->reflector->getIndexes($this->name) as $info) {
 				foreach ($info['columns'] as $key => $name) {
 					$info['columns'][$key] = $this->columns[strtolower($name)];
 				}
+
 				$this->indexes[strtolower($info['name'])] = new Index($info);
 				if (!empty($info['primary'])) {
 					$this->primaryKey = $this->indexes[strtolower($info['name'])];

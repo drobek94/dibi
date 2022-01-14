@@ -40,11 +40,10 @@ class MySqliDriver implements Dibi\Driver
 
 	public const ERROR_DATA_TRUNCATED = 1265;
 
-	/** @var \mysqli */
-	private $connection;
+	private \mysqli $connection;
 
-	/** @var bool  Is buffered (seekable and countable)? */
-	private $buffered;
+	/** Is buffered (seekable and countable)? */
+	private bool $buffered = false;
 
 
 	/** @throws Dibi\NotSupportedException */
@@ -86,6 +85,7 @@ class MySqliDriver implements Dibi\Driver
 					$this->connection->options($key, $value);
 				}
 			}
+
 			@$this->connection->real_connect( // intentionally @
 				(empty($config['persistent']) ? '' : 'p:') . $config['host'],
 				$config['username'],
@@ -93,7 +93,7 @@ class MySqliDriver implements Dibi\Driver
 				$config['database'] ?? '',
 				$config['port'] ?? 0,
 				$config['socket'],
-				$config['flags'] ?? 0
+				$config['flags'] ?? 0,
 			);
 
 			if ($this->connection->connect_errno) {
@@ -151,14 +151,12 @@ class MySqliDriver implements Dibi\Driver
 		} elseif ($res instanceof \mysqli_result) {
 			return $this->createResultDriver($res);
 		}
+
 		return null;
 	}
 
 
-	/**
-	 * @param int|string $code
-	 */
-	public static function createException(string $message, $code, string $sql): Dibi\DriverException
+	public static function createException(string $message, int|string $code, string $sql): Dibi\DriverException
 	{
 		if (in_array($code, [1216, 1217, 1451, 1452, 1701], true)) {
 			return new Dibi\ForeignKeyConstraintViolationException($message, $code, $sql);
@@ -189,6 +187,7 @@ class MySqliDriver implements Dibi\Driver
 		foreach ($matches as $m) {
 			$res[$m[1]] = (int) $m[2];
 		}
+
 		return $res;
 	}
 
@@ -217,7 +216,7 @@ class MySqliDriver implements Dibi\Driver
 	 * Begins a transaction (if supported).
 	 * @throws Dibi\DriverException
 	 */
-	public function begin(string $savepoint = null): void
+	public function begin(?string $savepoint = null): void
 	{
 		$this->query($savepoint ? "SAVEPOINT $savepoint" : 'START TRANSACTION');
 	}
@@ -227,7 +226,7 @@ class MySqliDriver implements Dibi\Driver
 	 * Commits statements in a transaction.
 	 * @throws Dibi\DriverException
 	 */
-	public function commit(string $savepoint = null): void
+	public function commit(?string $savepoint = null): void
 	{
 		$this->query($savepoint ? "RELEASE SAVEPOINT $savepoint" : 'COMMIT');
 	}
@@ -237,7 +236,7 @@ class MySqliDriver implements Dibi\Driver
 	 * Rollback changes in a transaction.
 	 * @throws Dibi\DriverException
 	 */
-	public function rollback(string $savepoint = null): void
+	public function rollback(?string $savepoint = null): void
 	{
 		$this->query($savepoint ? "ROLLBACK TO SAVEPOINT $savepoint" : 'ROLLBACK');
 	}
@@ -248,7 +247,11 @@ class MySqliDriver implements Dibi\Driver
 	 */
 	public function getResource(): ?\mysqli
 	{
-		return @$this->connection->thread_id ? $this->connection : null;
+		try {
+			return @$this->connection->thread_id ? $this->connection : null;
+		} catch (\Throwable $e) {
+			return null;
+		}
 	}
 
 
@@ -317,6 +320,7 @@ class MySqliDriver implements Dibi\Driver
 		if ($value->y || $value->m || $value->d) {
 			throw new Dibi\NotSupportedException('Only time interval is supported.');
 		}
+
 		return $value->format("'%r%H:%I:%S.%f'");
 	}
 

@@ -19,8 +19,7 @@ class OdbcReflector implements Dibi\Reflector
 {
 	use Dibi\Strict;
 
-	/** @var Dibi\Driver */
-	private $driver;
+	private Dibi\Driver $driver;
 
 
 	public function __construct(Dibi\Driver $driver)
@@ -44,6 +43,7 @@ class OdbcReflector implements Dibi\Reflector
 				];
 			}
 		}
+
 		odbc_free_result($res);
 		return $tables;
 	}
@@ -68,6 +68,7 @@ class OdbcReflector implements Dibi\Reflector
 				];
 			}
 		}
+
 		odbc_free_result($res);
 		return $columns;
 	}

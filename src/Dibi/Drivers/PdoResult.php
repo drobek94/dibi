@@ -21,11 +21,9 @@ class PdoResult implements Dibi\ResultDriver
 {
 	use Dibi\Strict;
 
-	/** @var \PDOStatement|null */
-	private $resultSet;
+	private ?\PDOStatement $resultSet;
 
-	/** @var string */
-	private $driverName;
+	private string $driverName;
 
 
 	public function __construct(\PDOStatement $resultSet, string $driverName)
@@ -85,6 +83,7 @@ class PdoResult implements Dibi\ResultDriver
 			if ($row === false) {
 				throw new Dibi\NotSupportedException('Driver does not support meta data.');
 			}
+
 			$row += [
 				'table' => null,
 				'native_type' => 'VAR_STRING',
@@ -99,6 +98,7 @@ class PdoResult implements Dibi\ResultDriver
 				'vendor' => $row,
 			];
 		}
+
 		return $columns;
 	}
 

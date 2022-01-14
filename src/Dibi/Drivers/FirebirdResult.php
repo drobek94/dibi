@@ -23,8 +23,7 @@ class FirebirdResult implements Dibi\ResultDriver
 	/** @var resource */
 	private $resultSet;
 
-	/** @var bool */
-	private $autoFree = true;
+	private bool $autoFree = true;
 
 
 	/**
@@ -103,7 +102,7 @@ class FirebirdResult implements Dibi\ResultDriver
 	 * Returns the result set resource.
 	 * @return resource|null
 	 */
-	public function getResultResource()
+	public function getResultResource(): mixed
 	{
 		$this->autoFree = false;
 		return is_resource($this->resultSet) ? $this->resultSet : null;
@@ -126,6 +125,7 @@ class FirebirdResult implements Dibi\ResultDriver
 				'nativetype' => $row['type'],
 			];
 		}
+
 		return $columns;
 	}
 

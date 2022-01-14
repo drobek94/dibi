@@ -22,23 +22,20 @@ class Connection implements IConnection
 {
 	use Strict;
 
-	/** @var array of function (Event $event); Occurs after query is executed */
-	public $onEvent = [];
+	/** function (Event $event); Occurs after query is executed */
+	public array $onEvent = [];
 
-	/** @var array  Current connection configuration */
-	private $config;
+	/** Current connection configuration */
+	private array $config;
 
 	/** @var string[]  resultset formats */
-	private $formats;
+	private array $formats;
 
-	/** @var Driver|null */
-	private $driver;
+	private ?Driver $driver = null;
 
-	/** @var Translator|null */
-	private $translator;
+	private ?Translator $translator = null;
 
-	/** @var HashMap Substitutes for identifiers */
-	private $substitutes;
+	private HashMap $substitutes;
 
 	/** @var bool */
 	private $isTransactional = false;
@@ -46,7 +43,7 @@ class Connection implements IConnection
 	/** @var bool */
 	private $transactionStarted = false;
 	
-	private $transactionDepth = 0;
+	private int $transactionDepth = 0;
 
 
 	/**
@@ -74,14 +71,14 @@ class Connection implements IConnection
 	 *   - onConnect (array) => list of SQL queries to execute (by Connection::query()) after connection is established
 	 * @throws Exception
 	 */
-	public function __construct(array $config, string $name = null)
+	public function __construct(array $config, ?string $name = null)
 	{
 		Helpers::alias($config, 'username', 'user');
 		Helpers::alias($config, 'password', 'pass');
 		Helpers::alias($config, 'host', 'hostname');
 		Helpers::alias($config, 'result|formatDate', 'resultDate');
 		Helpers::alias($config, 'result|formatDateTime', 'resultDateTime');
-		$config['driver'] = $config['driver'] ?? 'mysqli';
+		$config['driver'] ??= 'mysqli';
 		$config['name'] = $name;
 		$this->config = $config;
 
@@ -99,7 +96,7 @@ class Connection implements IConnection
 			$this->onEvent[] = [new Loggers\FileLogger($config['profiler']['file'], $filter, $errorsOnly), 'logEvent'];
 		}
 
-		$this->substitutes = new HashMap(function (string $expr) { return ":$expr:"; });
+		$this->substitutes = new HashMap(fn(string $expr) => ":$expr:");
 		if (!empty($config['substitutes'])) {
 			foreach ($config['substitutes'] as $key => $value) {
 				$this->substitutes->$key = $value;
@@ -175,16 +172,17 @@ class Connection implements IConnection
 			if ($event) {
 				$this->onEvent($event->done());
 			}
+
 			if (isset($this->config['onConnect'])) {
 				foreach ($this->config['onConnect'] as $sql) {
 					$this->query($sql);
 				}
 			}
-
 		} catch (DriverException $e) {
 			if ($event) {
 				$this->onEvent($event->done($e));
 			}
+
 			throw $e;
 		}
 	}
@@ -214,9 +212,8 @@ class Connection implements IConnection
 	/**
 	 * Returns configuration variable. If no $key is passed, returns the entire array.
 	 * @see self::__construct
-	 * @return mixed
 	 */
-	final public function getConfig(string $key = null, $default = null)
+	final public function getConfig(?string $key = null, $default = null): mixed
 	{
 		return $key === null
 			? $this->config
@@ -232,16 +229,16 @@ class Connection implements IConnection
 		if (!$this->driver) {
 			$this->connect();
 		}
+
 		return $this->driver;
 	}
 
 
 	/**
 	 * Generates (translates) and executes SQL query.
-	 * @param  mixed  ...$args
 	 * @throws Exception
 	 */
-	final public function query(...$args): Result
+	final public function query(mixed ...$args): Result
 	{
 		$query = $this->translate(...$args);
 
@@ -256,23 +253,22 @@ class Connection implements IConnection
 
 	/**
 	 * Generates SQL query.
-	 * @param  mixed  ...$args
 	 * @throws Exception
 	 */
-	final public function translate(...$args): string
+	final public function translate(mixed ...$args): string
 	{
 		if (!$this->driver) {
 			$this->connect();
 		}
+
 		return (clone $this->translator)->translate($args);
 	}
 
 
 	/**
 	 * Generates and prints SQL query.
-	 * @param  mixed  ...$args
 	 */
-	final public function test(...$args): bool
+	final public function test(mixed ...$args): bool
 	{
 		try {
 			Helpers::dump($this->translate(...$args));
@@ -282,8 +278,9 @@ class Connection implements IConnection
 			if ($e->getSql()) {
 				Helpers::dump($e->getSql());
 			} else {
-				echo get_class($e) . ': ' . $e->getMessage() . (PHP_SAPI === 'cli' ? "\n" : '<br>');
+				echo $e::class . ': ' . $e->getMessage() . (PHP_SAPI === 'cli' ? "\n" : '<br>');
 			}
+
 			return false;
 		}
 	}
@@ -291,10 +288,9 @@ class Connection implements IConnection
 
 	/**
 	 * Generates (translates) and returns SQL query as DataSource.
-	 * @param  mixed  ...$args
 	 * @throws Exception
 	 */
-	final public function dataSource(...$args): DataSource
+	final public function dataSource(mixed ...$args): DataSource
 	{
 		return new DataSource($this->translate(...$args), $this);
 	}
@@ -319,6 +315,7 @@ class Connection implements IConnection
 			if ($event) {
 				$this->onEvent($event->done($e));
 			}
+
 			throw $e;
 		}
 
@@ -326,6 +323,7 @@ class Connection implements IConnection
 		if ($event) {
 			$this->onEvent($event->done($res));
 		}
+
 		return $res;
 	}
 
@@ -339,10 +337,12 @@ class Connection implements IConnection
 		if (!$this->driver) {
 			$this->connect();
 		}
+
 		$rows = $this->driver->getAffectedRows();
 		if ($rows === null || $rows < 0) {
 			throw new Exception('Cannot retrieve number of affected rows.');
 		}
+
 		return $rows;
 	}
 
@@ -351,15 +351,17 @@ class Connection implements IConnection
 	 * Retrieves the ID generated for an AUTO_INCREMENT column by the previous INSERT query.
 	 * @throws Exception
 	 */
-	public function getInsertId(string $sequence = null): int
+	public function getInsertId(?string $sequence = null): int
 	{
 		if (!$this->driver) {
 			$this->connect();
 		}
+
 		$id = $this->driver->getInsertId($sequence);
 		if ($id === null) {
 			throw new Exception('Cannot retrieve last generated ID.');
 		}
+
 		return $id;
 	}
 
@@ -367,7 +369,7 @@ class Connection implements IConnection
 	/**
 	 * Begins a transaction (if supported).
 	 */
-	public function begin(string $savepoint = null): void
+	public function begin(?string $savepoint = null): void
 	{
 		if ($this->transactionDepth !== 0) {
 			throw new \LogicException(__METHOD__ . '() call is forbidden inside a transaction() callback');
@@ -376,17 +378,18 @@ class Connection implements IConnection
 		if (!$this->driver) {
 			$this->connect();
 		}
+
 		$event = $this->onEvent ? new Event($this, Event::BEGIN, $savepoint) : null;
 		try {
 			$this->driver->begin($savepoint);
 			if ($event) {
 				$this->onEvent($event->done());
 			}
-
 		} catch (DriverException $e) {
 			if ($event) {
 				$this->onEvent($event->done($e));
 			}
+
 			throw $e;
 		}
 	}
@@ -395,7 +398,7 @@ class Connection implements IConnection
 	/**
 	 * Commits statements in a transaction.
 	 */
-	public function commit(string $savepoint = null): void
+	public function commit(?string $savepoint = null): void
 	{
 		if ($this->transactionDepth !== 0) {
 			throw new \LogicException(__METHOD__ . '() call is forbidden inside a transaction() callback');
@@ -404,17 +407,18 @@ class Connection implements IConnection
 		if (!$this->driver) {
 			$this->connect();
 		}
+
 		$event = $this->onEvent ? new Event($this, Event::COMMIT, $savepoint) : null;
 		try {
 			$this->driver->commit($savepoint);
 			if ($event) {
 				$this->onEvent($event->done());
 			}
-
 		} catch (DriverException $e) {
 			if ($event) {
 				$this->onEvent($event->done($e));
 			}
+
 			throw $e;
 		}
 	}
@@ -423,7 +427,7 @@ class Connection implements IConnection
 	/**
 	 * Rollback changes in a transaction.
 	 */
-	public function rollback(string $savepoint = null): void
+	public function rollback(?string $savepoint = null): void
 	{
 		if ($this->transactionDepth !== 0) {
 			throw new \LogicException(__METHOD__ . '() call is forbidden inside a transaction() callback');
@@ -432,26 +436,24 @@ class Connection implements IConnection
 		if (!$this->driver) {
 			$this->connect();
 		}
+
 		$event = $this->onEvent ? new Event($this, Event::ROLLBACK, $savepoint) : null;
 		try {
 			$this->driver->rollback($savepoint);
 			if ($event) {
 				$this->onEvent($event->done());
 			}
-
 		} catch (DriverException $e) {
 			if ($event) {
 				$this->onEvent($event->done($e));
 			}
+
 			throw $e;
 		}
 	}
 
 
-	/**
-	 * @return mixed
-	 */
-	public function transaction(callable $callback)
+	public function transaction(callable $callback): mixed
 	{
 		if ($this->transactionDepth === 0) {
 			$this->begin();
@@ -465,6 +467,7 @@ class Connection implements IConnection
 			if ($this->transactionDepth === 0) {
 				$this->rollback();
 			}
+
 			throw $e;
 		}
 
@@ -516,6 +519,7 @@ class Connection implements IConnection
 		if ($args instanceof Traversable) {
 			$args = iterator_to_array($args);
 		}
+
 		return $this->command()->insert()
 			->into('%n', $table, '(%n)', array_keys($args))->values('%l', $args);
 	}
@@ -544,9 +548,9 @@ class Connection implements IConnection
 	 */
 	public function substitute(string $value): string
 	{
-		return strpos($value, ':') === false
-			? $value
-			: preg_replace_callback('#:([^:\s]*):#', function (array $m) { return $this->substitutes->{$m[1]}; }, $value);
+		return str_contains($value, ':')
+			? preg_replace_callback('#:([^:\s]*):#', fn(array $m) => $this->substitutes->{$m[1]}, $value)
+			: $value;
 	}
 
 
@@ -555,10 +559,9 @@ class Connection implements IConnection
 
 	/**
 	 * Executes SQL query and fetch result - shortcut for query() & fetch().
-	 * @param  mixed  ...$args
 	 * @throws Exception
 	 */
-	public function fetch(...$args): ?Row
+	public function fetch(mixed ...$args): ?Row
 	{
 		return $this->query($args)->fetch();
 	}
@@ -566,11 +569,10 @@ class Connection implements IConnection
 
 	/**
 	 * Executes SQL query and fetch results - shortcut for query() & fetchAll().
-	 * @param  mixed  ...$args
 	 * @return Row[]|array[]
 	 * @throws Exception
 	 */
-	public function fetchAll(...$args): array
+	public function fetchAll(mixed ...$args): array
 	{
 		return $this->query($args)->fetchAll();
 	}
@@ -578,11 +580,9 @@ class Connection implements IConnection
 
 	/**
 	 * Executes SQL query and fetch first column - shortcut for query() & fetchSingle().
-	 * @param  mixed  ...$args
-	 * @return mixed
 	 * @throws Exception
 	 */
-	public function fetchSingle(...$args)
+	public function fetchSingle(mixed ...$args): mixed
 	{
 		return $this->query($args)->fetchSingle();
 	}
@@ -590,10 +590,9 @@ class Connection implements IConnection
 
 	/**
 	 * Executes SQL query and fetch pairs - shortcut for query() & fetchPairs().
-	 * @param  mixed  ...$args
 	 * @throws Exception
 	 */
-	public function fetchPairs(...$args): array
+	public function fetchPairs(mixed ...$args): array
 	{
 		return $this->query($args)->fetchPairs();
 	}
@@ -619,7 +618,7 @@ class Connection implements IConnection
 	 * @param  callable  $onProgress  function (int $count, ?float $percent): void
 	 * @return int  count of sql commands
 	 */
-	public function loadFile(string $file, callable $onProgress = null): int
+	public function loadFile(string $file, ?callable $onProgress = null): int
 	{
 		return Helpers::loadFromFile($this, $file, $onProgress);
 	}
@@ -633,6 +632,7 @@ class Connection implements IConnection
 		if (!$this->driver) {
 			$this->connect();
 		}
+
 		return new Reflection\Database($this->driver->getReflector(), $this->config['database'] ?? null);
 	}
 

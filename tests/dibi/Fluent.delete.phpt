@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 use Tester\Assert;
@@ -14,33 +15,33 @@ $fluent = $conn->delete('table')->as('bAlias')
 
 Assert::same(
 	reformat('DELETE IGNORE FROM [table] AS [bAlias]'),
-	(string) $fluent
+	(string) $fluent,
 );
 
 $fluent->removeClause('from')->from('anotherTable');
 
 Assert::same(
 	reformat('DELETE IGNORE FROM [anotherTable]'),
-	(string) $fluent
+	(string) $fluent,
 );
 
 $fluent->using('thirdTable');
 
 Assert::same(
 	reformat('DELETE IGNORE FROM [anotherTable] USING [thirdTable]'),
-	(string) $fluent
+	(string) $fluent,
 );
 
 $fluent->setFlag('IGNORE', false);
 
 Assert::same(
 	reformat('DELETE FROM [anotherTable] USING [thirdTable]'),
-	(string) $fluent
+	(string) $fluent,
 );
 
 $fluent->limit(10);
 
 Assert::same(
 	reformat('DELETE FROM [anotherTable] USING [thirdTable] LIMIT 10'),
-	(string) $fluent
+	(string) $fluent,
 );

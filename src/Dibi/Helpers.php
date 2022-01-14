@@ -14,19 +14,17 @@ class Helpers
 {
 	use Strict;
 
-	/** @var HashMap */
-	private static $types;
+	private static HashMap $types;
 
 
 	/**
 	 * Prints out a syntax highlighted version of the SQL command or Result.
-	 * @param  string|Result  $sql
 	 */
-	public static function dump($sql = null, bool $return = false): ?string
+	public static function dump(string|Result|null $sql = null, bool $return = false): ?string
 	{
 		ob_start();
 		if ($sql instanceof Result && PHP_SAPI === 'cli') {
-			$hasColors = (substr((string) getenv('TERM'), 0, 5) === 'xterm');
+			$hasColors = (str_starts_with((string) getenv('TERM'), 'xterm'));
 			$maxLen = 0;
 			foreach ($sql as $i => $row) {
 				if ($i === 0) {
@@ -41,6 +39,7 @@ class Helpers
 					$spaces = $maxLen - mb_strlen($col) + 2;
 					echo "$col" . str_repeat(' ', $spaces) . "$val\n";
 				}
+
 				echo "\n";
 			}
 
@@ -53,6 +52,7 @@ class Helpers
 					foreach ($row as $col => $foo) {
 						echo "\t\t<th>" . htmlspecialchars((string) $col) . "</th>\n";
 					}
+
 					echo "\t</tr>\n</thead>\n<tbody>\n";
 				}
 
@@ -60,6 +60,7 @@ class Helpers
 				foreach ($row as $col) {
 					echo "\t\t<td>", htmlspecialchars((string) $col), "</td>\n";
 				}
+
 				echo "\t</tr>\n";
 			}
 
@@ -88,7 +89,7 @@ class Helpers
 			// syntax highlight
 			$highlighter = "#(/\\*.+?\\*/)|(\\*\\*.+?\\*\\*)|(?<=[\\s,(])($keywords1)(?=[\\s,)])|(?<=[\\s,(=])($keywords2)(?=[\\s,)=])#is";
 			if (PHP_SAPI === 'cli') {
-				if (substr((string) getenv('TERM'), 0, 5) === 'xterm') {
+				if (str_starts_with((string) getenv('TERM'), 'xterm')) {
 					$sql = preg_replace_callback($highlighter, function (array $m) {
 						if (!empty($m[1])) { // comment
 							return "\033[1;30m" . $m[1] . "\033[0m";
@@ -104,6 +105,7 @@ class Helpers
 						}
 					}, $sql);
 				}
+
 				echo trim($sql) . "\n\n";
 
 			} else {
@@ -150,6 +152,7 @@ class Helpers
 				$best = $item;
 			}
 		}
+
 		return $best;
 	}
 
@@ -198,6 +201,7 @@ class Helpers
 				return $val;
 			}
 		}
+
 		return null;
 	}
 
@@ -205,9 +209,10 @@ class Helpers
 	/** @internal */
 	public static function getTypeCache(): HashMap
 	{
-		if (self::$types === null) {
+		if (!isset(self::$types)) {
 			self::$types = new HashMap([self::class, 'detectType']);
 		}
+
 		return self::$types;
 	}
 
@@ -231,9 +236,9 @@ class Helpers
 
 	/**
 	 * Import SQL dump from file.
-	 * @return int  count of sql commands
+	 * Returns count of sql commands
 	 */
-	public static function loadFromFile(Connection $connection, string $file, callable $onProgress = null): int
+	public static function loadFromFile(Connection $connection, string $file, ?callable $onProgress = null): int
 	{
 		@set_time_limit(0); // intentionally @
 
@@ -252,7 +257,7 @@ class Helpers
 			if (strtoupper(substr($s, 0, 10)) === 'DELIMITER ') {
 				$delimiter = trim(substr($s, 10));
 
-			} elseif (substr($ts = rtrim($s), -strlen($delimiter)) === $delimiter) {
+			} elseif (str_ends_with($ts = rtrim($s), $delimiter)) {
 				$sql .= substr($ts, 0, -strlen($delimiter));
 				$driver->query($sql);
 				$sql = '';
@@ -260,7 +265,6 @@ class Helpers
 				if ($onProgress) {
 					$onProgress($count, isset($stat['size']) ? $size * 100 / $stat['size'] : null);
 				}
-
 			} else {
 				$sql .= $s;
 			}
@@ -273,20 +277,21 @@ class Helpers
 				$onProgress($count, isset($stat['size']) ? 100 : null);
 			}
 		}
+
 		fclose($handle);
 		return $count;
 	}
 
 
 	/** @internal */
-	public static function false2Null($val)
+	public static function false2Null(mixed $val): mixed
 	{
 		return $val === false ? null : $val;
 	}
 
 
 	/** @internal */
-	public static function intVal($value): int
+	public static function intVal(mixed $value): int
 	{
 		if (is_int($value)) {
 			return $value;
@@ -294,6 +299,7 @@ class Helpers
 			if (is_float($value * 1)) {
 				throw new Exception("Number $value is greater than integer.");
 			}
+
 			return (int) $value;
 		} else {
 			throw new Exception("Expected number, '$value' given.");

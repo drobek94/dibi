@@ -29,14 +29,14 @@ class Column
 {
 	use Dibi\Strict;
 
-	/** @var Dibi\Reflector|null when created by Result */
-	private $reflector;
+	/** when created by Result */
+	private ?Dibi\Reflector $reflector;
 
 	/** @var array (name, nativetype, [table], [fullname], [size], [nullable], [default], [autoincrement], [vendor]) */
-	private $info;
+	private array $info;
 
 
-	public function __construct(Dibi\Reflector $reflector = null, array $info)
+	public function __construct(?Dibi\Reflector $reflector, array $info)
 	{
 		$this->reflector = $reflector;
 		$this->info = $info;
@@ -66,6 +66,7 @@ class Column
 		if (empty($this->info['table']) || !$this->reflector) {
 			throw new Dibi\Exception('Table is unknown or not available.');
 		}
+
 		return new Table($this->reflector, ['name' => $this->info['table']]);
 	}
 
@@ -108,15 +109,13 @@ class Column
 	}
 
 
-	/** @return mixed */
-	public function getDefault()
+	public function getDefault(): mixed
 	{
 		return $this->info['default'] ?? null;
 	}
 
 
-	/** @return mixed */
-	public function getVendorInfo(string $key)
+	public function getVendorInfo(string $key): mixed
 	{
 		return $this->info['vendor'][$key] ?? null;
 	}

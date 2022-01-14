@@ -19,8 +19,7 @@ class OracleReflector implements Dibi\Reflector
 {
 	use Dibi\Strict;
 
-	/** @var Dibi\Driver */
-	private $driver;
+	private Dibi\Driver $driver;
 
 
 	public function __construct(Dibi\Driver $driver)
@@ -44,6 +43,7 @@ class OracleReflector implements Dibi\Reflector
 				];
 			}
 		}
+
 		return $tables;
 	}
 
@@ -66,6 +66,7 @@ class OracleReflector implements Dibi\Reflector
 				'vendor' => $row,
 			];
 		}
+
 		return $columns;
 	}
 

@@ -30,11 +30,9 @@ class OdbcDriver implements Dibi\Driver
 	/** @var resource */
 	private $connection;
 
-	/** @var int|null  Affected rows */
-	private $affectedRows;
+	private ?int $affectedRows;
 
-	/** @var bool */
-	private $microseconds = true;
+	private bool $microseconds = true;
 
 
 	/** @throws Dibi\NotSupportedException */
@@ -96,6 +94,7 @@ class OdbcDriver implements Dibi\Driver
 				? $this->createResultDriver($res)
 				: null;
 		}
+
 		return null;
 	}
 
@@ -122,9 +121,9 @@ class OdbcDriver implements Dibi\Driver
 	 * Begins a transaction (if supported).
 	 * @throws Dibi\DriverException
 	 */
-	public function begin(string $savepoint = null): void
+	public function begin(?string $savepoint = null): void
 	{
-		if (!odbc_autocommit($this->connection, PHP_VERSION_ID < 80000 ? 0 : false)) {
+		if (!odbc_autocommit($this->connection, false)) {
 			throw new Dibi\DriverException(odbc_errormsg($this->connection) . ' ' . odbc_error($this->connection));
 		}
 	}
@@ -134,12 +133,13 @@ class OdbcDriver implements Dibi\Driver
 	 * Commits statements in a transaction.
 	 * @throws Dibi\DriverException
 	 */
-	public function commit(string $savepoint = null): void
+	public function commit(?string $savepoint = null): void
 	{
 		if (!odbc_commit($this->connection)) {
 			throw new Dibi\DriverException(odbc_errormsg($this->connection) . ' ' . odbc_error($this->connection));
 		}
-		odbc_autocommit($this->connection, PHP_VERSION_ID < 80000 ? 1 : true);
+
+		odbc_autocommit($this->connection, true);
 	}
 
 
@@ -147,12 +147,13 @@ class OdbcDriver implements Dibi\Driver
 	 * Rollback changes in a transaction.
 	 * @throws Dibi\DriverException
 	 */
-	public function rollback(string $savepoint = null): void
+	public function rollback(?string $savepoint = null): void
 	{
 		if (!odbc_rollback($this->connection)) {
 			throw new Dibi\DriverException(odbc_errormsg($this->connection) . ' ' . odbc_error($this->connection));
 		}
-		odbc_autocommit($this->connection, PHP_VERSION_ID < 80000 ? 1 : true);
+
+		odbc_autocommit($this->connection, true);
 	}
 
 
@@ -169,7 +170,7 @@ class OdbcDriver implements Dibi\Driver
 	 * Returns the connection resource.
 	 * @return resource|null
 	 */
-	public function getResource()
+	public function getResource(): mixed
 	{
 		return is_resource($this->connection) ? $this->connection : null;
 	}

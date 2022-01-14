@@ -51,25 +51,24 @@ interface Driver
 	 * Begins a transaction (if supported).
 	 * @throws DriverException
 	 */
-	function begin(string $savepoint = null): void;
+	function begin(?string $savepoint = null): void;
 
 	/**
 	 * Commits statements in a transaction.
 	 * @throws DriverException
 	 */
-	function commit(string $savepoint = null): void;
+	function commit(?string $savepoint = null): void;
 
 	/**
 	 * Rollback changes in a transaction.
 	 * @throws DriverException
 	 */
-	function rollback(string $savepoint = null): void;
+	function rollback(?string $savepoint = null): void;
 
 	/**
 	 * Returns the connection resource.
-	 * @return mixed
 	 */
-	function getResource();
+	function getResource(): mixed;
 
 	/**
 	 * Returns the connection reflector.
@@ -117,7 +116,6 @@ interface ResultDriver
 
 	/**
 	 * Moves cursor position without fetching row.
-	 * @return bool  true on success, false if unable to seek to specified record
 	 * @throws Exception
 	 */
 	function seek(int $row): bool;
@@ -142,9 +140,8 @@ interface ResultDriver
 
 	/**
 	 * Returns the result set resource.
-	 * @return mixed
 	 */
-	function getResultResource();
+	function getResultResource(): mixed;
 
 	/**
 	 * Decodes data from result set.
@@ -224,20 +221,20 @@ interface IConnection
 	 * Retrieves the ID generated for an AUTO_INCREMENT column by the previous INSERT query.
 	 * @throws Exception
 	 */
-	function getInsertId(string $sequence = null): int;
+	function getInsertId(?string $sequence = null): int;
 
 	/**
 	 * Begins a transaction (if supported).
 	 */
-	function begin(string $savepoint = null): void;
+	function begin(?string $savepoint = null): void;
 
 	/**
 	 * Commits statements in a transaction.
 	 */
-	function commit(string $savepoint = null): void;
+	function commit(?string $savepoint = null): void;
 
 	/**
 	 * Rollback changes in a transaction.
 	 */
-	function rollback(string $savepoint = null): void;
+	function rollback(?string $savepoint = null): void;
 }

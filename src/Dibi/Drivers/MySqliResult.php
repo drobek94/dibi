@@ -19,14 +19,12 @@ class MySqliResult implements Dibi\ResultDriver
 {
 	use Dibi\Strict;
 
-	/** @var \mysqli_result */
-	private $resultSet;
+	private \mysqli_result $resultSet;
 
-	/** @var bool */
-	private $autoFree = true;
+	private bool $autoFree = true;
 
-	/** @var bool  Is buffered (seekable and countable)? */
-	private $buffered;
+	/** Is buffered (seekable and countable)? */
+	private bool $buffered;
 
 
 	public function __construct(\mysqli_result $resultSet, bool $buffered)
@@ -55,6 +53,7 @@ class MySqliResult implements Dibi\ResultDriver
 		if (!$this->buffered) {
 			throw new Dibi\NotSupportedException('Row count is not available for unbuffered queries.');
 		}
+
 		return $this->resultSet->num_rows;
 	}
 
@@ -80,6 +79,7 @@ class MySqliResult implements Dibi\ResultDriver
 		if (!$this->buffered) {
 			throw new Dibi\NotSupportedException('Cannot seek an unbuffered result set.');
 		}
+
 		return $this->resultSet->data_seek($row);
 	}
 
@@ -107,6 +107,7 @@ class MySqliResult implements Dibi\ResultDriver
 					$types[$value] = substr($key, 12);
 				}
 			}
+
 			$types[MYSQLI_TYPE_TINY] = $types[MYSQLI_TYPE_SHORT] = $types[MYSQLI_TYPE_LONG] = 'INT';
 		}
 
@@ -123,6 +124,7 @@ class MySqliResult implements Dibi\ResultDriver
 				'vendor' => $row,
 			];
 		}
+
 		return $columns;
 	}
 
