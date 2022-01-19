@@ -159,10 +159,6 @@ class Result implements IDataSource
 	/**
 	 * Fetches the row at current position, process optional type conversion.
 	 * and moves the internal cursor to the next position
-<<<<<<< HEAD
-	 * @return array|null
-=======
->>>>>>> upstream/master
 	 */
 	final public function fetch(): Row|array|null
 	{
