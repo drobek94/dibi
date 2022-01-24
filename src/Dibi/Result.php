@@ -164,7 +164,7 @@ class Result implements IDataSource
 =======
 >>>>>>> upstream/master
 	 */
-	final public function fetch(): Row|array|null
+	final public function fetch(): array|null
 	{
 		$row = $this->getResultDriver()->fetch(true);
 		if ($row === null) {
